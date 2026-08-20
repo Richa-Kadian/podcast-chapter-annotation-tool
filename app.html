@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Momento — Study Companion Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="bg-aura">
+  <div class="aura-light aura-1"></div>
+  <div class="aura-light aura-2"></div>
+</div>
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a href="index.html" class="brand navlink"><span class="brand-mark"></span> momento</a>
+    <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="links" id="navLinks">
+      <a href="how.html" class="navlink">How it works</a>
+      <a href="app.html" class="navlink">Open the tool</a>
+      <a href="compare.html" class="navlink">Why Momento</a>
+    </nav>
+    <div class="nav-right" id="navAuthArea">
+      <a href="login.html" class="btn btn-ghost btn-sm nav-cta" style="border-radius:20px; font-weight:600;">Sign In</a>
+      <a href="app.html" class="btn btn-amber nav-cta">Try it now</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap app-section">
+    <div class="app-head">
+      <div>
+        <h2>Your Study Library</h2>
+        <p>Everything below runs client-side — stored securely in your browser, synced in real time.</p>
+      </div>
+    </div>
+
+    <!-- Upload / Link Card -->
+    <div class="card" style="padding:26px;">
+      <div class="input-tabs">
+        <button type="button" class="input-tab active" data-tab="upload">⬆ Upload file</button>
+        <button type="button" class="input-tab" data-tab="link">🔗 Paste a link</button>
+      </div>
+
+      <!-- TAB: Upload -->
+      <form id="uploadForm" novalidate>
+        <label class="dropzone" id="dropzone" for="fileInput" tabindex="0" role="button" aria-label="Choose or drop an audio or video file to upload" aria-describedby="uploadErr">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M12 4L7 9M12 4l5 5"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+          <h3>Drop a recording here, or click to choose a file</h3>
+          <p>MP4, WEBM, MP3 or WAV, up to 300MB — processed entirely in your browser for this demo</p>
+          <input type="file" id="fileInput" accept="audio/*,video/*" />
+        </label>
+        <div id="fileChipWrap"></div>
+        <div class="err-text" id="uploadErr" role="alert"><span>⚠</span><span id="uploadErrMsg">Please choose an audio or video file before continuing.</span></div>
+
+        <div class="field-row">
+          <label class="field-label" for="studentName">Your name (optional — personalizes your results)</label>
+          <input class="field" id="studentName" type="text" placeholder="e.g. Aditi Sharma" maxlength="40" aria-describedby="nameErr" />
+          <div class="err-text" id="nameErr" role="alert"><span>⚠</span><span>Use 2–40 letters and spaces only.</span></div>
+        </div>
+
+        <div style="margin-top:20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <button type="submit" class="btn btn-amber" id="processBtn">Transcribe &amp; build study session</button>
+        </div>
+
+        <div class="process-bar" id="processBar">
+          <div class="pbar-track"><div class="pbar-fill" id="pbarFill"></div></div>
+          <div class="pbar-label" id="pbarLabel">Reading file…</div>
+        </div>
+      </form>
+
+      <!-- TAB: Paste a link -->
+      <div id="linkPanel" style="display:none;">
+        <div class="field-row" style="margin-top:0;">
+          <label class="field-label" for="linkInput">YouTube URL or direct video link</label>
+          <input class="field" id="linkInput" type="url" placeholder="https://www.youtube.com/watch?v=… or https://example.com/video.mp4" aria-describedby="linkErr" />
+          <div class="err-text" id="linkErr" role="alert"><span>⚠</span><span id="linkErrMsg">Please enter a valid YouTube or video URL.</span></div>
+        </div>
+        <div id="ytThumbWrap" style="display:none; margin-top:14px;">
+          <img id="ytThumb" src="" alt="Video thumbnail" style="width:100%; max-width:320px; border-radius:8px; border:1px solid var(--line);" />
+          <div id="ytTitle" style="margin-top:8px; font-size:13.5px; font-weight:700;"></div>
+        </div>
+        <div style="margin-top:18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <button type="button" class="btn btn-amber" id="linkSubmitBtn">Build study session from link</button>
+        </div>
+        <div class="process-bar" id="linkProcessBar">
+          <div class="pbar-track"><div class="pbar-fill" id="linkPbarFill"></div></div>
+          <div class="pbar-label" id="linkPbarLabel">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dev Panel (Storage Inspection) -->
+    <div class="card devpanel" style="padding:22px;">
+      <button type="button" class="adv-toggle" id="devToggle" aria-expanded="false">Show what's saved in LocalStorage right now (DevTools inspector) ▸</button>
+      <div class="dev-body" id="devBody">
+        <div class="dev-grid">
+          <div>
+            <label class="field-label">localStorage["momento_library_v1"]</label>
+            <pre class="dev-pre" id="devLibraryPre">[]</pre>
+          </div>
+          <div>
+            <label class="field-label">localStorage["momento_streak_v1"]</label>
+            <pre class="dev-pre" id="devStreakPre">{}</pre>
+          </div>
+        </div>
+        <div class="dev-hint">Updates live as you upload, take a quiz, or take notes — matches DevTools → Application → Local Storage exactly.</div>
+      </div>
+    </div>
+
+    <!-- Library List Grid -->
+    <div id="libraryWrap">
+      <div class="lib-grid" id="libGrid"></div>
+      <div class="lib-empty" id="libEmpty" style="display:none;">Nothing in your library yet — process a recording above and it'll show up here.</div>
+    </div>
+
+    <!-- Active Study Workspace -->
+    <div class="workspace" id="workspace">
+      <!-- Session Header -->
+      <div class="ws-header-card">
+        <div class="ws-header-main">
+          <div class="ws-header-info">
+            <div class="eyebrow" style="margin-bottom:6px;">Active Study Session</div>
+            <h2 id="wsTitle" style="font-family:var(--ff-display); font-size:24px; margin:0 0 4px; color:var(--cloud);">Session</h2>
+            <div class="ws-session-meta" id="wsMeta">0:00 · 0 chapters</div>
+          </div>
+          <div class="ws-header-stats" id="wsHeaderStats">
+            <div class="ws-stat">
+              <span class="ws-stat-value" id="wsTypeBadge">Video</span>
+              <span class="ws-stat-label">Type</span>
+            </div>
+            <div class="ws-stat">
+              <span class="ws-stat-value" id="wsDurationBadge">0:00</span>
+              <span class="ws-stat-label">Duration</span>
+            </div>
+            <div class="ws-stat">
+              <span class="ws-stat-value" id="wsChapterBadge">0</span>
+              <span class="ws-stat-label">Chapters</span>
+            </div>
+            <div class="ws-stat amber">
+              <span class="ws-stat-value" id="wsBestScoreBadge">—</span>
+              <span class="ws-stat-label">Best score</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Player Card -->
+      <div class="card player-card">
+        <div class="media-wrap" id="mediaWrap">
+          <video id="videoEl" playsinline></video>
+          <div id="ytPlayerWrap" style="display:none; width:100%; height:100%;"></div>
+        </div>
+
+        <div class="controls">
+          <button type="button" class="play-btn" id="playBtn" aria-label="Play or pause">
+            <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <span class="time-lbl" id="curTime">0:00</span>
+          <div class="seek-wrap">
+            <div class="seek-track" id="seekTrack" role="slider" aria-label="Seek" tabindex="0">
+              <div class="seek-fill" id="seekFill"></div>
+              <div id="chapMarksHost"></div>
+              <div class="seek-head" id="seekHead"></div>
+            </div>
+          </div>
+          <span class="time-lbl" id="durTime">0:00</span>
+        </div>
+
+        <div class="chap-legend" id="chapLegend"></div>
+
+        <div class="player-sync-status" id="playerSyncStatus">
+          <div class="sync-indicator">
+            <span class="sync-dot"></span>
+            <span class="sync-mode-txt">AI LECTURE SYNC ACTIVE</span>
+          </div>
+          <div class="sync-chapter-txt" id="syncActiveChapterTxt">Chapter 1 — ACTIVE</div>
+        </div>
+
+        <div class="search-row">
+          <input class="field" id="searchInput" placeholder="Search the transcript — try a keyword (e.g. closure, function)…" />
+        </div>
+        <div class="search-results" id="searchResults"></div>
+
+        <!-- Quiz Trigger -->
+        <div class="quiz-cta-container">
+          <div class="quiz-len-selector">
+            <span class="quiz-len-lbl">Quiz Length:</span>
+            <div class="quiz-len-btn-group" id="quizLenGroup">
+              <button type="button" class="quiz-len-btn active" data-len="5">5 Qs</button>
+              <button type="button" class="quiz-len-btn" data-len="10">10 Qs</button>
+              <button type="button" class="quiz-len-btn" data-len="15">15 Qs</button>
+              <button type="button" class="quiz-len-btn" data-len="all">All</button>
+            </div>
+          </div>
+          <button type="button" class="test-cta" id="getTestBtn" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            <span>Take Recall Quiz</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Workspace Tabs & Multi-Panel -->
+      <div class="card transcript-card">
+        <div class="ws-tabs">
+          <button type="button" class="ws-tab-btn active" data-ws-tab="transcript">Transcript</button>
+          <button type="button" class="ws-tab-btn" data-ws-tab="summary">✨ AI Summary</button>
+          <button type="button" class="ws-tab-btn" data-ws-tab="insights">AI Insights</button>
+          <button type="button" class="ws-tab-btn" data-ws-tab="flashcards">Flashcards</button>
+          <button type="button" class="ws-tab-btn" data-ws-tab="notes">Notes</button>
+        </div>
+
+        <!-- Panel 1: Synced Transcript -->
+        <div class="ws-panel active" id="ws-panel-transcript">
+          <div class="tc-head">
+            <h3>Synced transcript</h3>
+            <div class="tc-head-actions">
+              <button type="button" class="btn btn-ghost btn-xs" id="quickSummaryBtn" style="color:var(--amber); border-color:rgba(242,169,59,0.3);">✨ AI Summary</button>
+            </div>
+          </div>
+          <div class="transcript-list" id="transcriptList"></div>
+        </div>
+
+        <!-- Panel 2: AI Summary -->
+        <div class="ws-panel" id="ws-panel-summary">
+          <div class="summary-header-box">
+            <div class="summary-badge">RECORDING-AWARE AI SUMMARY</div>
+            <h3 id="summaryTitle">Session Overview</h3>
+            <p id="summarySubtitle" class="summary-sub">Auto-synthesized key takeaways and core concepts from this recording.</p>
+            <div class="summary-actions-bar">
+              <button type="button" class="btn btn-ghost btn-sm" id="copySummaryBtn">📋 Copy Summary</button>
+              <button type="button" class="btn btn-amber btn-sm" id="regenSummaryBtn">✨ Refresh Summary</button>
+            </div>
+          </div>
+          <div class="summary-content" id="summaryContent"></div>
+        </div>
+
+        <!-- Panel 3: AI Insights -->
+        <div class="ws-panel" id="ws-panel-insights">
+          <div class="insights-wrap">
+            <div class="insights-section">
+              <div class="insights-sec-head">
+                <span class="insights-tag">UNIVERSAL OVERVIEW</span>
+                <h4>Executive Summary</h4>
+              </div>
+              <p class="insights-summary-text" id="insightsSummary">Summary loading…</p>
+            </div>
+            <div class="insights-section">
+              <div class="insights-sec-head">
+                <span class="insights-tag">KEY MOMENTS</span>
+                <h4>Pivotal Moments &amp; Quotes</h4>
+              </div>
+              <div class="insights-moments-list" id="insightsKeyMoments"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 4: 3D Flashcards -->
+        <div class="ws-panel" id="ws-panel-flashcards">
+          <div class="fc-wrap">
+            <div class="fc-header">
+              <h3>Study Flashcards</h3>
+              <div class="fc-deck-progress" id="fcDeckProgress">Card 0 of 0</div>
+            </div>
+
+            <div id="fcActiveArea">
+              <div class="fc-perspective">
+                <div class="fc-card" id="fcCard" tabindex="0" role="button" aria-label="Flashcard — press Enter or Space to flip">
+                  <div class="fc-face fc-front">
+                    <span class="fc-card-tag" id="fcCardTagFront">Keyword</span>
+                    <p class="fc-card-content" id="fcCardTextFront">Front Sentence</p>
+                    <span class="fc-card-hint">Click card to reveal definition</span>
+                  </div>
+                  <div class="fc-face fc-back">
+                    <span class="fc-card-tag" id="fcCardTagBack">Definition</span>
+                    <p class="fc-card-content" id="fcCardTextBack" style="color:var(--amber)">Keyword Value</p>
+                    <span class="fc-card-hint">Click card to see context</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="fc-actions">
+                <button type="button" class="btn btn-ghost" id="fcStudyingBtn">Still Studying ❌</button>
+                <button type="button" class="btn btn-amber" id="fcKnownBtn">Known ✅</button>
+              </div>
+            </div>
+
+            <div id="fcFinishedArea" style="display:none;" class="fc-empty-state">
+              <h4 style="font-family:var(--ff-display); font-size:20px; font-weight:600; margin-bottom:12px; color:var(--amber)">Deck Complete! 🎉</h4>
+              <p style="color:var(--mist); font-size:13.5px; margin-bottom:20px;">You've reviewed all flashcards in this deck.</p>
+              <button type="button" class="btn btn-amber" id="fcResetBtn">Review Again</button>
+            </div>
+
+            <div class="fc-piles">
+              <div class="fc-pile known">
+                <div class="fc-pile-num" id="fcPileKnownCount">0</div>
+                <div class="fc-pile-lbl">Known</div>
+              </div>
+              <div class="fc-pile studying">
+                <div class="fc-pile-num" id="fcPileStudyingCount">0</div>
+                <div class="fc-pile-lbl">To Review</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 5: Lecture Notes -->
+        <div class="ws-panel" id="ws-panel-notes">
+          <div class="notes-wrap">
+            <div class="fc-header" style="margin-bottom:8px;">
+              <h3>Lecture Notes</h3>
+              <button type="button" class="btn btn-ghost btn-sm" id="exportNotesBtn" style="gap:6px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Export MD
+              </button>
+            </div>
+            <p style="color:var(--mist); font-size:12.5px; margin:0 0 10px;">Create timestamped highlights. Clicking a note seeks player directly to that moment.</p>
+
+            <form id="notesForm" novalidate>
+              <div class="notes-input-row">
+                <input class="field" id="noteInput" placeholder="Add study note at current time..." required autocomplete="off" />
+                <button type="submit" class="btn btn-amber" style="padding:10px 14px; border-radius:8px;">Add</button>
+              </div>
+            </form>
+
+            <div class="notes-list" id="notesList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommendations Row -->
+      <div class="recommendations-container">
+        <div class="cap-head" style="margin:28px 0 16px;">
+          <div class="eyebrow">Recommendations Engine</div>
+          <h2>Recommended Next</h2>
+          <p>Smart continuations computed from this session's actual extracted keywords and chapter topics.</p>
+        </div>
+        <div class="rec-grid" id="recGrid"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Quiz Overlay with Inline Review Panel -->
+<div class="overlay" id="quizOverlay" role="dialog" aria-modal="true" aria-label="Quiz">
+  <div class="quiz-card" id="quizCard" tabindex="-1">
+    <button type="button" class="quiz-close" id="quizClose" aria-label="Close quiz">×</button>
+
+    <div id="quizPlay">
+      <div class="quiz-progress" id="quizProgress"></div>
+      <div class="quiz-meta-row">
+        <span class="quiz-eyebrow" id="quizChapterTag">Chapter</span>
+        <span class="quiz-type-tag" id="quizTypeTag">Factual Recall</span>
+      </div>
+      <p class="quiz-q" id="quizQ"></p>
+      <div class="quiz-opts" id="quizOpts"></div>
+
+      <!-- Inline Review Panel on Wrong Answer -->
+      <div class="inline-review" id="inlineReview" style="display:none;">
+        <div class="inline-review-head">
+          <span class="inline-review-label">📍 The answer is discussed at <strong id="inlineReviewTs">0:00</strong></span>
+          <button type="button" class="inline-review-open" id="inlineReviewOpen">Review this moment in player ↗</button>
+        </div>
+        <div class="inline-correct-callout" id="inlineCorrectCallout" style="display:none;">
+          <span class="correct-badge">Correct Answer:</span> <strong id="inlineCorrectAnswerText"></strong>
+        </div>
+        <div class="inline-explanation-box" id="inlineExplanationBox" style="display:none;">
+          <span id="inlineExplanationText"></span>
+        </div>
+        <div class="inline-review-line" id="inlineReviewLine"></div>
+        <div class="inline-review-player" id="inlineReviewPlayer"></div>
+      </div>
+
+      <div class="quiz-feedback" id="quizFeedback">
+        <span class="quiz-result-tag" id="quizResultTag"></span>
+        <button type="button" class="next-btn" id="nextBtn">Next question →</button>
+      </div>
+      <div class="kbd-hint">Press 1–4 to answer · Enter for next · Esc to close</div>
+    </div>
+
+    <!-- Quiz Results Screen -->
+    <div class="results-view" id="resultsView">
+      <div class="quiz-eyebrow">Session complete</div>
+      <div class="results-score" id="resultsScore">0%</div>
+      <div class="results-sub" id="resultsSub">0 of 0 correct</div>
+      <div class="streak-row" id="streakRow"></div>
+      <div class="badge-row" id="badgeRow"></div>
+      <div class="weak-list" id="weakList" style="display:none;">
+        <h4>Worth another look</h4>
+        <div id="weakItems"></div>
+      </div>
+      <button type="button" class="btn btn-amber" id="closeResultsBtn" style="width:100%; justify-content:center;">Back to the recording</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand"><span class="brand-mark"></span> momento</div>
+        <p class="foot-blurb">A study companion that turns a recording into a synced, searchable, testable session — built around one idea: every wrong answer should lead straight back to the moment that explains it.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Product</h5>
+        <nav class="foot-col-links">
+          <a href="index.html" class="navlink">Home</a>
+          <a href="how.html" class="navlink">How it works</a>
+          <a href="app.html" class="navlink">Open the tool</a>
+          <a href="compare.html" class="navlink">Why Momento</a>
+        </nav>
+      </div>
+      <div class="foot-col">
+        <h5>Built with</h5>
+        <div class="foot-badges">
+          <span class="foot-badge">Vanilla JavaScript</span>
+          <span class="foot-badge">LocalStorage</span>
+          <span class="foot-badge">Fetch API</span>
+          <span class="foot-badge">Hand-coded algorithms</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span class="foot-copy">© Momento. Built as a personal study tool.</span>
+      <button type="button" class="foot-reset" id="resetAllBtn">Reset demo data</button>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/common.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
