@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Momento — Sign In &amp; Create Account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+
+<div class="bg-aura">
+  <div class="aura-light aura-1"></div>
+  <div class="aura-light aura-2"></div>
+</div>
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a href="index.html" class="brand navlink"><span class="brand-mark"></span> momento</a>
+    <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="links" id="navLinks">
+      <a href="how.html" class="navlink">How it works</a>
+      <a href="app.html" class="navlink">Open the tool</a>
+      <a href="compare.html" class="navlink">Why Momento</a>
+    </nav>
+    <div class="nav-right" id="navAuthArea">
+      <a href="login.html" class="btn btn-ghost btn-sm nav-cta" style="border-radius:20px; font-weight:600;">Sign In</a>
+      <a href="app.html" class="btn btn-amber nav-cta">Try it now</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap auth-wrapper">
+    <div class="auth-card">
+      <!-- 1. SIGN IN VIEW -->
+      <div id="auth-login-view">
+        <div class="page-head" style="padding:0; margin-bottom:24px; text-align:center;">
+          <div class="eyebrow" style="justify-content:center; margin-bottom:10px;">Welcome back</div>
+          <h2 style="font-size:26px; margin:0 0 6px;">Sign in to Momento</h2>
+          <p style="font-size:13.5px;">Start study sessions and sync notes client-side</p>
+        </div>
+
+        <form id="loginForm" novalidate>
+          <div class="field-row" style="margin-top:0;">
+            <label class="field-label" for="loginEmail">Email Address</label>
+            <input class="field" id="loginEmail" type="email" placeholder="you@example.com" required autocomplete="email" aria-describedby="loginEmailErr" />
+            <div class="err-text" id="loginEmailErr" role="alert"><span>⚠</span><span id="loginEmailErrMsg">Please enter a valid email address.</span></div>
+          </div>
+
+          <div class="field-row">
+            <label class="field-label" for="loginPassword">Password</label>
+            <input class="field" id="loginPassword" type="password" placeholder="••••••••" required autocomplete="current-password" aria-describedby="loginPasswordErr" />
+            <div class="err-text" id="loginPasswordErr" role="alert"><span>⚠</span><span id="loginPasswordErrMsg">Password is required.</span></div>
+          </div>
+
+          <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-amber" style="width:100%; justify-content:center;" id="loginSubmitBtn">Sign In</button>
+          </div>
+        </form>
+
+        <div class="demo-auth-box">
+          <p>Evaluating the project? Skip registration:</p>
+          <button type="button" class="btn btn-ghost btn-sm" id="demoLoginBtn" style="width:100%; justify-content:center;">⚡ 1-Click Evaluation Demo Access</button>
+        </div>
+
+        <div class="auth-footer">
+          Don't have an account? <button type="button" class="auth-toggle-link" id="toggleToSignup">Create Account</button>
+        </div>
+      </div>
+
+      <!-- 2. CREATE ACCOUNT VIEW -->
+      <div id="auth-signup-view" style="display:none;">
+        <div class="page-head" style="padding:0; margin-bottom:24px; text-align:center;">
+          <div class="eyebrow" style="justify-content:center; margin-bottom:10px;">Start for free</div>
+          <h2 style="font-size:26px; margin:0 0 6px;">Create your account</h2>
+          <p style="font-size:13.5px;">Join students studying smarter with lecture timestamps</p>
+        </div>
+
+        <form id="signupForm" novalidate>
+          <div class="field-row" style="margin-top:0;">
+            <label class="field-label" for="signupName">Full Name</label>
+            <input class="field" id="signupName" type="text" placeholder="Aditi Sharma" required autocomplete="name" aria-describedby="signupNameErr" />
+            <div class="err-text" id="signupNameErr" role="alert"><span>⚠</span><span id="signupNameErrMsg">Please enter your full name (2+ characters).</span></div>
+          </div>
+
+          <div class="field-row">
+            <label class="field-label" for="signupEmail">Email Address</label>
+            <input class="field" id="signupEmail" type="email" placeholder="you@example.com" required autocomplete="email" aria-describedby="signupEmailErr" />
+            <div class="err-text" id="signupEmailErr" role="alert"><span>⚠</span><span>Please enter a valid email address.</span></div>
+          </div>
+
+          <div class="field-row">
+            <label class="field-label" for="signupPassword">Password</label>
+            <input class="field" id="signupPassword" type="password" placeholder="••••••••" required autocomplete="new-password" aria-describedby="signupPasswordErr" />
+            <div class="err-text" id="signupPasswordErr" role="alert"><span>⚠</span><span>Password doesn't meet the requirements below.</span></div>
+          </div>
+
+          <div class="field-row">
+            <label class="field-label" for="signupConfirmPassword">Confirm Password</label>
+            <input class="field" id="signupConfirmPassword" type="password" placeholder="••••••••" required autocomplete="new-password" aria-describedby="signupConfirmErr" />
+            <div class="err-text" id="signupConfirmErr" role="alert"><span>⚠</span><span>Passwords don't match.</span></div>
+          </div>
+
+          <div class="auth-check-wrap">
+            <div class="valid-checklist" id="signupChecklist" aria-live="polite">
+              <div class="vc-item" id="scEmail"><span class="vc-dot"></span> Valid email address format</div>
+              <div class="vc-item" id="scPassword"><span class="vc-dot"></span> Password: 8+ chars, digit &amp; symbol</div>
+              <div class="vc-item" id="scMatch"><span class="vc-dot"></span> Passwords match</div>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;">
+            <button type="submit" class="btn btn-amber" style="width:100%; justify-content:center;" id="signupSubmitBtn">Create Account</button>
+          </div>
+        </form>
+
+        <div class="auth-footer">
+          Already have an account? <button type="button" class="auth-toggle-link" id="toggleToLogin">Sign In</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand"><span class="brand-mark"></span> momento</div>
+        <p class="foot-blurb">A study companion that turns a recording into a synced, searchable, testable session — built around one idea: every wrong answer should lead straight back to the moment that explains it.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Product</h5>
+        <nav class="foot-col-links">
+          <a href="index.html" class="navlink">Home</a>
+          <a href="how.html" class="navlink">How it works</a>
+          <a href="app.html" class="navlink">Open the tool</a>
+          <a href="compare.html" class="navlink">Why Momento</a>
+        </nav>
+      </div>
+      <div class="foot-col">
+        <h5>Built with</h5>
+        <div class="foot-badges">
+          <span class="foot-badge">Vanilla JavaScript</span>
+          <span class="foot-badge">LocalStorage</span>
+          <span class="foot-badge">Fetch API</span>
+          <span class="foot-badge">Hand-coded algorithms</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span class="foot-copy">© Momento. Built as a personal study tool.</span>
+      <button type="button" class="foot-reset" id="resetAllBtn">Reset demo data</button>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/common.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

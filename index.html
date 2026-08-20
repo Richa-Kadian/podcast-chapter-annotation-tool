@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Momento — the moment that explains it</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+
+<div class="bg-aura">
+  <div class="aura-light aura-1"></div>
+  <div class="aura-light aura-2"></div>
+</div>
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a href="index.html" class="brand navlink"><span class="brand-mark"></span> momento</a>
+    <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="links" id="navLinks">
+      <a href="how.html" class="navlink">How it works</a>
+      <a href="app.html" class="navlink">Open the tool</a>
+      <a href="compare.html" class="navlink">Why Momento</a>
+    </nav>
+    <div class="nav-right" id="navAuthArea">
+      <a href="login.html" class="btn btn-ghost btn-sm nav-cta" style="border-radius:20px; font-weight:600;">Sign In</a>
+      <a href="app.html" class="btn btn-amber nav-cta">Try it now</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero wrap">
+    <div class="eyebrow">AI-assisted study companion</div>
+    <h1 class="headline">Every lecture has <em>one second</em><br/>that actually explains it.</h1>
+    <p class="sub">Upload a recording. Momento transcribes it, finds where each idea starts, and turns it into a test — where every wrong answer sends you back to the exact moment that clears it up.</p>
+    <div class="hero-cta">
+      <a href="app.html" class="btn btn-amber">Upload a lecture ↓</a>
+      <a href="how.html" class="btn btn-ghost">See how the sync works</a>
+    </div>
+    <div class="hero-note" id="lib-count-note">Nothing processed yet — your library will build up here as you go.</div>
+
+    <!-- Live Synced Demo Strip -->
+    <div class="demo-strip" aria-hidden="true">
+      <div class="demo-line" id="demoLine"></div>
+      <div class="demo-track" id="demoTrack">
+        <div class="demo-fill" id="demoFill"></div>
+        <div class="demo-cursor" id="demoCursor"></div>
+      </div>
+      <div class="demo-caps"><span>00:00</span><span>a transcript line syncing to playback, live</span><span>00:42</span></div>
+    </div>
+
+    <!-- Quick Navigation Cards -->
+    <div class="home-links">
+      <a class="home-link-card reveal" href="how.html">
+        <div class="k">01</div><h4>How it works →</h4>
+        <p>Three real steps — upload, watch and learn, test and review — plus the four algorithms behind them.</p>
+      </a>
+      <a class="home-link-card reveal" href="app.html">
+        <div class="k">02</div><h4>Open the tool →</h4>
+        <p>Upload a file, get a synced transcript, take a generated quiz — the tool itself.</p>
+      </a>
+      <a class="home-link-card reveal" href="compare.html">
+        <div class="k">03</div><h4>Why Momento? →</h4>
+        <p>A direct, honest comparison — what's a commodity feature and what we're actually building.</p>
+      </a>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar reveal">
+      <div class="stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6L9 17l-5-5"/></svg>
+        <div class="stat-text"><b>100% client-side</b><span>No server for this build</span></div>
+      </div>
+      <div class="stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg>
+        <div class="stat-text"><b>4 hand-coded algorithms</b><span>Sync, chapters, quiz, scoring</span></div>
+      </div>
+      <div class="stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M2 12h20"/></svg>
+        <div class="stat-text"><b>0 external frameworks</b><span>Plain HTML, CSS, JS</span></div>
+      </div>
+      <div class="stat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+        <div class="stat-text"><b>Works offline</b><span>Demo mode needs no API key</span></div>
+      </div>
+    </div>
+
+    <!-- Interactive Podcast Feature Hub -->
+    <div class="hub-section reveal">
+      <div class="cap-head" style="text-align:center; align-items:center; display:flex; flex-direction:column; margin-top:20px;">
+        <div class="eyebrow">Interactive Feature Hub</div>
+        <h2>Explore the AI Podcast Sync</h2>
+        <p>Click the central recording deck to expand and interact with Momento's learning controls.</p>
+      </div>
+
+      <div class="hub-container" id="interactiveHub">
+        <div class="hub-ring ring-1"></div>
+        <div class="hub-ring ring-2"></div>
+
+        <!-- Central Deck -->
+        <button type="button" class="hub-core" id="hubCoreBtn" aria-label="Toggle AI Podcast Controls Deck" aria-expanded="false" title="Click to expand/sync learning controls">
+          <div class="hub-core-pulse"></div>
+          <div class="hub-core-inner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mic-icon"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8"/></svg>
+            <div class="hub-core-text">TAP TO SYNC</div>
+          </div>
+          <div class="hub-visualizer" id="hubVisualizer">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </button>
+
+        <!-- Feature Nodes -->
+        <button type="button" class="hub-node" data-feature="transcript" style="--angle: 0deg; --dist: 175px;" aria-label="Sync Transcript Feature">
+          <div class="hub-node-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <span class="hub-node-lbl">Sync Transcript</span>
+        </button>
+        <button type="button" class="hub-node" data-feature="video" style="--angle: 60deg; --dist: 175px;" aria-label="Video Review Feature">
+          <div class="hub-node-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
+          <span class="hub-node-lbl">Video Review</span>
+        </button>
+        <button type="button" class="hub-node" data-feature="quiz" style="--angle: 120deg; --dist: 175px;" aria-label="Interactive Quiz Feature">
+          <div class="hub-node-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <span class="hub-node-lbl">Interactive Quiz</span>
+        </button>
+        <button type="button" class="hub-node" data-feature="flashcards" style="--angle: 180deg; --dist: 175px;" aria-label="3D Flashcards Feature">
+          <div class="hub-node-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg></div>
+          <span class="hub-node-lbl">3D Flashcards</span>
+        </button>
+        <button type="button" class="hub-node" data-feature="notes" style="--angle: 240deg; --dist: 175px;" aria-label="Smart Notes Feature">
+          <div class="hub-node-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+          <span class="hub-node-lbl">Smart Notes</span>
+        </button>
+        <button type="button" class="hub-node" data-feature="chapters" style="--angle: 300deg; --dist: 175px;" aria-label="Auto Chapters Feature">
+          <div class="hub-node-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+          <span class="hub-node-lbl">Auto Chapters</span>
+        </button>
+
+        <!-- Side Telemetry Panels -->
+        <div class="hub-hud-panel hud-left">
+          <div class="hud-stat interactive" data-hud="gain" role="button" tabindex="0" title="Click to cycle audio gain">
+            <span>GAIN</span>
+            <div class="hud-bar"><span id="hudGainBar" style="width:75%;"></span></div>
+          </div>
+          <div class="hud-stat interactive" data-hud="speed" role="button" tabindex="0" title="Click to cycle playback speed">
+            <span>SPEED</span>
+            <strong id="hudSpeedVal">1.25x</strong>
+          </div>
+          <div class="hud-stat interactive" data-hud="stereo" role="button" tabindex="0" title="Click to toggle spatial stereo mode">
+            <span>STEREO</span>
+            <span class="hud-badge" id="hudStereoVal">L-R</span>
+          </div>
+        </div>
+        <div class="hub-hud-panel hud-right">
+          <div class="hud-stat interactive" data-hud="freq" role="button" tabindex="0" title="Click to cycle sampling frequency">
+            <span>FREQ</span>
+            <strong id="hudFreqVal">44.1 kHz</strong>
+          </div>
+          <div class="hud-stat interactive" data-hud="latency" role="button" tabindex="0" title="Click to run network ping test">
+            <span>LATENCY</span>
+            <strong id="hudLatencyVal">12 ms</strong>
+          </div>
+          <div class="hud-stat interactive" data-hud="deck-state" role="button" tabindex="0" title="Click to toggle deck sync mode">
+            <span>DECK STATE</span>
+            <span class="hud-badge active" id="hudStateBadge">READY</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Core Features Grid -->
+    <div class="cap-head reveal">
+      <div class="eyebrow">What Momento actually does</div>
+      <h2>Fewer tools, wired together properly.</h2>
+      <p>Not a menu of twenty disconnected AI utilities — one pipeline where each piece feeds the next.</p>
+    </div>
+    <div class="cap-grid">
+      <a href="app.html" class="cap-card reveal">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></div>
+        <h4>Synced transcript</h4>
+        <p>Every line highlights itself in real time as audio plays, found with a hand-coded binary search.</p>
+      </a>
+      <a href="app.html" class="cap-card amber reveal">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h10M4 18h6"/></svg></div>
+        <h4>Auto-detected chapters</h4>
+        <p>Topic shifts are found by tracking keyword frequency, not typed in by hand.</p>
+      </a>
+      <a href="app.html" class="cap-card reveal">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+        <h4>Search into playback</h4>
+        <p>Type a word, jump straight to the second it was actually said.</p>
+      </a>
+      <a href="app.html" class="cap-card amber reveal">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+        <h4>Timestamp-linked quiz</h4>
+        <p>Every question remembers the exact line it came from — wrong answers jump back to it.</p>
+      </a>
+      <a href="app.html" class="cap-card reveal">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c3 4-2 5-2 9a4 4 0 008 0c0-2-1-3-2-5 1 3-1 4-2 2-1-2 0-4-2-6z"/></svg></div>
+        <h4>Streaks &amp; badges</h4>
+        <p>Attempts, scores, and day-over-day streaks persist per recording in this browser.</p>
+      </a>
+    </div>
+
+    <!-- Use Cases Section -->
+    <div class="use-cases-section wrap reveal">
+      <div class="cap-head" style="margin-top:0;">
+        <div class="eyebrow">Designed for your workflow</div>
+        <h2>Who uses Momento?</h2>
+        <p>Whether you're studying for an exam, reviewing research, or creating educational content, Momento adapts to your needs.</p>
+      </div>
+
+      <div class="uc-tabs">
+        <button type="button" class="uc-tab active" data-tab="students">For Students</button>
+        <button type="button" class="uc-tab" data-tab="researchers">For Researchers</button>
+        <button type="button" class="uc-tab" data-tab="creators">For Content Creators</button>
+      </div>
+
+      <div class="uc-content active" id="uc-students">
+        <div class="uc-text">
+          <h3>Ace your finals with zero wasted time</h3>
+          <p>Don't re-watch two-hour lectures. Generate quizzes directly from the transcript, find your weak points instantly, and jump straight to the exact second that explains it.</p>
+          <p><strong>Key benefit:</strong> 10-second reviews instead of skimming timelines.</p>
+        </div>
+        <div class="uc-graphic">
+          <span class="uc-badge">Feature Spot</span>
+          <h4 style="margin:0 0 10px; font-weight:800; color:var(--amber)">Active Recall Loop</h4>
+          <div style="font-family:var(--ff-mono); font-size:11.5px; color:var(--mist)">Question: What is a closure? <br>❌ Wrong answer clicked! <br>✨ Player automatically jumps to [12:45] where closures are defined.</div>
+        </div>
+      </div>
+
+      <div class="uc-content" id="uc-researchers">
+        <div class="uc-text">
+          <h3>Index and search video materials</h3>
+          <p>Analyze research talks, panels, and interviews. Jump straight to references, track term occurrences across the session, and export structured timestamped notes for reports.</p>
+          <p><strong>Key benefit:</strong> Search transcripts to jump direct to playback.</p>
+        </div>
+        <div class="uc-graphic">
+          <span class="uc-badge">Feature Spot</span>
+          <h4 style="margin:0 0 10px; font-weight:800; color:var(--teal)">Smart Notes Export</h4>
+          <div style="font-family:var(--ff-mono); font-size:11.5px; color:var(--mist)">Notes matching "attention mechanism": <br>📄 [04:12] - Discussed transformer architecture. <br>💾 Exported notes.md successfully!</div>
+        </div>
+      </div>
+
+      <div class="uc-content" id="uc-creators">
+        <div class="uc-text">
+          <h3>Structure educational video chapters</h3>
+          <p>Automatically segment lecture video uploads into topics based on keyword shifts. Refine titles, review flow, and ensure quiz-readiness for your viewers.</p>
+          <p><strong>Key benefit:</strong> Auto-detected chapters based on keyword shifts.</p>
+        </div>
+        <div class="uc-graphic">
+          <span class="uc-badge">Feature Spot</span>
+          <h4 style="margin:0 0 10px; font-weight:800; color:var(--amber)">Chapter Segmenter</h4>
+          <div style="font-family:var(--ff-mono); font-size:11.5px; color:var(--mist)">Topic shift detected:<br>📖 Chapter 1: Variables (0:00 - 2:30)<br>📖 Chapter 2: Functions (2:30 - 5:10)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Testimonials Section -->
+    <div class="testimonial-section reveal">
+      <div class="wrap">
+        <div class="cap-head" style="margin-top:0; text-align:center; align-items:center; display:flex; flex-direction:column;">
+          <div class="eyebrow" style="margin-bottom:12px;">Loved by learners</div>
+          <h2 style="text-align:center;">What our users say</h2>
+          <p style="text-align:center;">Students and educators are saving hours of review time every week.</p>
+        </div>
+      </div>
+      <div class="testimonial-track-wrap" style="margin-top:40px;">
+        <div class="testimonial-track">
+          <div class="t-card">
+            <div class="t-author">
+              <div class="t-avatar">AS</div>
+              <div class="t-info"><h5>Aditi Sharma</h5><span>Stanford University</span></div>
+            </div>
+            <p>"The wrong answer jump is magic. Instead of wasting 15 minutes finding the slide, I just click and listen for 10 seconds."</p>
+          </div>
+          <div class="t-card">
+            <div class="t-author">
+              <div class="t-avatar">RK</div>
+              <div class="t-info"><h5>Rohan Kurup</h5><span>MIT CS</span></div>
+            </div>
+            <p>"Using it to study database lecture recordings. The transcript sync is highly accurate, and the local storage backup is great."</p>
+          </div>
+          <div class="t-card">
+            <div class="t-author">
+              <div class="t-avatar">MP</div>
+              <div class="t-info"><h5>Maria Perez</h5><span>UCSF Medicine</span></div>
+            </div>
+            <p>"Momento helped me pass my anatomy finals. Visual chapters make it easy to drill down into the exact segments I don't know."</p>
+          </div>
+          <div class="t-card">
+            <div class="t-author">
+              <div class="t-avatar">DK</div>
+              <div class="t-info"><h5>David Kim</h5><span>IIT Bombay</span></div>
+            </div>
+            <p>"Hand-coded client side search is lightning fast. I can query a term and jump directly into the exact second it was said."</p>
+          </div>
+          <!-- Duplicated for smooth infinite marquee -->
+          <div class="t-card">
+            <div class="t-author">
+              <div class="t-avatar">AS</div>
+              <div class="t-info"><h5>Aditi Sharma</h5><span>Stanford University</span></div>
+            </div>
+            <p>"The wrong answer jump is magic. Instead of wasting 15 minutes finding the slide, I just click and listen for 10 seconds."</p>
+          </div>
+          <div class="t-card">
+            <div class="t-author">
+              <div class="t-avatar">RK</div>
+              <div class="t-info"><h5>Rohan Kurup</h5><span>MIT CS</span></div>
+            </div>
+            <p>"Using it to study database lecture recordings. The transcript sync is highly accurate, and the local storage backup is great."</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand"><span class="brand-mark"></span> momento</div>
+        <p class="foot-blurb">A study companion that turns a recording into a synced, searchable, testable session — built around one idea: every wrong answer should lead straight back to the moment that explains it.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Product</h5>
+        <nav class="foot-col-links">
+          <a href="index.html" class="navlink">Home</a>
+          <a href="how.html" class="navlink">How it works</a>
+          <a href="app.html" class="navlink">Open the tool</a>
+          <a href="compare.html" class="navlink">Why Momento</a>
+        </nav>
+      </div>
+      <div class="foot-col">
+        <h5>Built with</h5>
+        <div class="foot-badges">
+          <span class="foot-badge">Vanilla JavaScript</span>
+          <span class="foot-badge">LocalStorage</span>
+          <span class="foot-badge">Fetch API</span>
+          <span class="foot-badge">Hand-coded algorithms</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span class="foot-copy">© Momento. Built as a personal study tool.</span>
+      <button type="button" class="foot-reset" id="resetAllBtn">Reset demo data</button>
+    </div>
+  </div>
+</footer>
+
+<!-- Interactive Hub Feature Preview Modal -->
+<div class="overlay" id="hubModal" role="dialog" aria-modal="true" aria-label="Feature Preview">
+  <div class="hub-modal-card" id="hubModalCard" tabindex="-1">
+    <button type="button" class="quiz-close" id="hubModalClose" aria-label="Close feature preview">×</button>
+    <div class="hub-modal-header">
+      <div class="hub-modal-badge" id="hubModalBadge">AI FEATURE DEMO</div>
+      <h3 class="hub-modal-title" id="hubModalTitle">Synced Transcript</h3>
+      <p class="hub-modal-desc" id="hubModalDesc">Experience real-time speech synchronization and active study tools.</p>
+    </div>
+    <div class="hub-modal-body" id="hubModalBody"></div>
+    <div class="hub-modal-foot">
+      <button type="button" class="btn btn-ghost" id="hubModalDismiss">Close Preview</button>
+      <button type="button" class="btn btn-amber" id="hubModalStudioBtn">Open in Full Studio ↗</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/common.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>
