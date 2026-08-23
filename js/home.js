@@ -6,7 +6,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
 
-  const { $, $$, toast, LIB_KEY } = window.Momento;
+  const { $, $$, toast, LIB_KEY, scopedKey, getCurrentUser } = window.Momento;
 
   // -------------------------------------------------------------
   // 1. Hero Live Sync Simulation
@@ -95,10 +95,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const libNote = $('#lib-count-note');
   if (libNote) {
     try {
-      const raw = localStorage.getItem(LIB_KEY);
-      const items = raw ? JSON.parse(raw) : [];
-      if (items.length > 0) {
-        libNote.innerHTML = `📚 <b>${items.length}</b> study session${items.length === 1 ? '' : 's'} saved in your browser. <a href="app.html" style="color:var(--amber); text-decoration:underline; font-weight:600;">Open your library →</a>`;
+      // Only ever look at the signed-in user's own bucket. A signed-out
+      // visitor, or a brand-new account, has nothing to show here yet.
+      const user = getCurrentUser();
+      if (user) {
+        const raw = localStorage.getItem(scopedKey(LIB_KEY));
+        const items = raw ? JSON.parse(raw) : [];
+        if (items.length > 0) {
+          libNote.innerHTML = `📚 <b>${items.length}</b> study session${items.length === 1 ? '' : 's'} saved in your browser. <a href="app.html" style="color:var(--amber); text-decoration:underline; font-weight:600;">Open your library →</a>`;
+        }
       }
     } catch {}
   }

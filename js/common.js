@@ -189,15 +189,31 @@
   }
 
   // -------------------------------------------------------------
+  // Per-User Storage Key Scoping
+  // -------------------------------------------------------------
+  // Every piece of saved data (library, streak, notes, flashcard
+  // progress, etc.) must live under a key unique to the signed-in
+  // user, otherwise every account on the same browser shares the
+  // same LocalStorage bucket. scopedKey() appends the current
+  // user's id to a base key; a signed-out visitor falls back to a
+  // "guest" bucket so a fresh/new account never inherits someone
+  // else's saved sessions.
+  function scopedKey(baseKey) {
+    const user = getCurrentUser();
+    const scope = (user && user.id) ? user.id : 'guest';
+    return `${baseKey}__${scope}`;
+  }
+
+  // -------------------------------------------------------------
   // Global Reset Button (Footer)
   // -------------------------------------------------------------
   const resetAllBtn = $('#resetAllBtn');
   if (resetAllBtn) {
     resetAllBtn.addEventListener('click', () => {
-      if (confirm('Clear and reset demo library recordings in this browser?')) {
-        localStorage.removeItem(LIB_KEY);
-        localStorage.removeItem(STREAK_KEY);
-        toast('Demo library reset. Reloading…');
+      if (confirm('Clear and reset your saved library on this device?')) {
+        localStorage.removeItem(scopedKey(LIB_KEY));
+        localStorage.removeItem(scopedKey(STREAK_KEY));
+        toast('Your library has been reset. Reloading…');
         setTimeout(() => { window.location.reload(); }, 600);
       }
     });
@@ -227,6 +243,7 @@
     clearCurrentUser,
     updateNavAuth,
     requireAuth,
+    scopedKey,
     LIB_KEY,
     STREAK_KEY,
     USERS_KEY,

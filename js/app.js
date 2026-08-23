@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toast,
     getCurrentUser,
     requireAuth,
+    scopedKey,
     LIB_KEY,
     STREAK_KEY
   } = window.Momento;
@@ -117,6 +118,55 @@ document.addEventListener('DOMContentLoaded', () => {
   function youtubeEmbedUrl(ytId, startSeconds = 0, autoplay = false) {
     const start = Math.floor(startSeconds);
     return `https://www.youtube.com/embed/${ytId}?start=${start}&rel=0&modestbranding=1${autoplay ? '&autoplay=1' : ''}&enablejsapi=1`;
+  }
+
+  // Reads the real duration of a direct (.mp4/.webm/etc) video URL by
+  // loading its metadata in an off-screen <video>, instead of assuming
+  // a fixed length for every link.
+  function detectDirectVideoDuration(url) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (d) => {
+        if (settled) return;
+        settled = true;
+        resolve(d && isFinite(d) && d > 0 ? d : 300);
+      };
+      try {
+        const tempVideo = document.createElement('video');
+        tempVideo.preload = 'metadata';
+        tempVideo.src = url;
+        tempVideo.onloadedmetadata = () => finish(tempVideo.duration);
+        tempVideo.onerror = () => finish(300);
+        setTimeout(() => finish(300), 4000);
+      } catch {
+        finish(300);
+      }
+    });
+  }
+
+  // -------------------------------------------------------------
+  // YouTube IFrame Player API loader
+  // -------------------------------------------------------------
+  // Needed so we can read the *real* video duration (player.getDuration())
+  // and actually seek/play the embedded video, instead of a static
+  // decorative <iframe> that ignores everything the app does.
+  let ytApiLoadPromise = null;
+  function loadYouTubeIframeAPI() {
+    if (window.YT && window.YT.Player) return Promise.resolve();
+    if (ytApiLoadPromise) return ytApiLoadPromise;
+    ytApiLoadPromise = new Promise((resolve) => {
+      const prevCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (typeof prevCallback === 'function') {
+          try { prevCallback(); } catch {}
+        }
+        resolve();
+      };
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+    });
+    return ytApiLoadPromise;
   }
 
   // -------------------------------------------------------------
@@ -223,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Algorithm 4: Streak & Scoring Manager
   function getStreak() {
     try {
-      return JSON.parse(localStorage.getItem(STREAK_KEY)) || { current: 0, best: 0, lastDate: null };
+      return JSON.parse(localStorage.getItem(scopedKey(STREAK_KEY))) || { current: 0, best: 0, lastDate: null };
     } catch {
       return { current: 0, best: 0, lastDate: null };
     }
@@ -240,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
         streak.lastDate = today;
       }
     }
-    localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
+    localStorage.setItem(scopedKey(STREAK_KEY), JSON.stringify(streak));
     return streak;
   }
 
@@ -288,15 +338,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadLibrary() {
     try {
-      const raw = localStorage.getItem(LIB_KEY);
+      const raw = localStorage.getItem(scopedKey(LIB_KEY));
       library = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(library) || library.length === 0) {
-        library = createDefaultLibrary();
-        saveLibrary();
-      }
+      if (!Array.isArray(library)) library = [];
     } catch {
-      library = createDefaultLibrary();
-      saveLibrary();
+      library = [];
     }
     renderLibrary();
     updateDevPanel();
@@ -304,30 +350,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveLibrary() {
     try {
-      localStorage.setItem(LIB_KEY, JSON.stringify(library));
+      localStorage.setItem(scopedKey(LIB_KEY), JSON.stringify(library));
       updateDevPanel();
     } catch {
       toast("Couldn't save to LocalStorage - storage may be full.", { err: true });
     }
   }
 
-  function createDefaultLibrary() {
-    const dur = 180;
-    const lines = generateTranscript(dur);
-    const chapters = detectChapters(lines);
-    return [
-      {
-        id: 'session_demo_js',
-        title: 'JavaScript Core Principles & Closures',
-        type: 'sample',
-        duration: dur,
-        lines,
-        chapters,
-        genre: 'Computer Science',
-        createdAt: new Date().toISOString(),
-        bestScore: 100
+  // Re-generates a session's transcript/chapters against its *real*
+  // duration once we know it (e.g. once the YouTube player reports its
+  // actual length), instead of leaving every video stretched or
+  // truncated to whatever placeholder length it was created with.
+  function syncSessionDuration(session, realDurationSeconds) {
+    const rounded = Math.round(realDurationSeconds);
+    if (!rounded || rounded <= 0 || Math.abs(rounded - session.duration) < 2) return;
+
+    session.duration = rounded;
+    session.lines = generateTranscript(rounded);
+    session.chapters = detectChapters(session.lines);
+
+    const idx = library.findIndex(s => s.id === session.id);
+    if (idx !== -1) library[idx] = session;
+    saveLibrary();
+    renderLibrary();
+
+    if (activeSession && activeSession.id === session.id) {
+      if (wsMeta) wsMeta.textContent = `${fmtTime(session.duration)} · ${session.chapters ? session.chapters.length : 0} chapters`;
+      if (wsDurationBadge) wsDurationBadge.textContent = fmtTime(session.duration);
+      if (wsChapterBadge) wsChapterBadge.textContent = session.chapters ? session.chapters.length : 0;
+      if (durTimeLbl) durTimeLbl.textContent = fmtTime(session.duration);
+      if (seekTrack) {
+        seekTrack.setAttribute('aria-valuemax', String(Math.round(session.duration)));
+        seekTrack.setAttribute('aria-valuetext', `${fmtTime(currentTime)} of ${fmtTime(session.duration)}`);
       }
-    ];
+      renderChapters(session);
+      renderTranscript(session);
+      renderAISummary(session);
+      renderAIInsights(session);
+    }
   }
 
   // -------------------------------------------------------------
@@ -681,6 +741,56 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // -------------------------------------------------------------
+  // 6b. YouTube oEmbed Preview (real title + thumbnail while pasting)
+  // -------------------------------------------------------------
+  let fetchedYtTitle = '';
+  let fetchedYtId = null;
+
+  async function handleLinkInputPreview() {
+    const url = linkInput.value.trim();
+    const ytId = extractYouTubeId(url);
+
+    if (!ytId) {
+      if (ytThumbWrap) ytThumbWrap.style.display = 'none';
+      fetchedYtTitle = '';
+      fetchedYtId = null;
+      return;
+    }
+
+    fetchedYtId = ytId;
+    fetchedYtTitle = '';
+
+    if (ytThumb) ytThumb.src = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
+    if (ytThumbWrap) ytThumbWrap.style.display = 'block';
+    if (ytTitle) ytTitle.textContent = 'Loading title…';
+
+    try {
+      const res = await fetchWithTimeout(
+        `https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + ytId)}&format=json`,
+        5000
+      );
+      // The URL may have changed while this request was in flight.
+      if (extractYouTubeId(linkInput.value.trim()) !== ytId) return;
+      if (res.ok) {
+        const data = await res.json();
+        fetchedYtTitle = data.title || '';
+        if (ytTitle) ytTitle.textContent = fetchedYtTitle || 'YouTube video';
+      } else if (ytTitle) {
+        ytTitle.textContent = '';
+      }
+    } catch {
+      if (extractYouTubeId(linkInput.value.trim()) === ytId && ytTitle) {
+        ytTitle.textContent = '';
+      }
+    }
+  }
+
+  if (linkInput) {
+    linkInput.addEventListener('input', handleLinkInputPreview);
+    linkInput.addEventListener('paste', () => setTimeout(handleLinkInputPreview, 50));
+  }
+
   // Link Submit (YouTube or Direct Video)
   async function submitLinkForm() {
     const url = linkInput.value.trim();
@@ -714,17 +824,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       await wait(500);
-      linkPbarFill.style.width = '80%';
-      linkPbarLabel.textContent = 'Synthesizing lecture transcript & chapter boundaries…';
-      await wait(500);
+      linkPbarFill.style.width = '65%';
+      linkPbarLabel.textContent = ytId
+        ? 'Reading video length & building transcript…'
+        : 'Reading media headers & calculating duration…';
 
-      const dur = 320;
+      // For a direct video file we can read the real duration right away.
+      // For YouTube, the exact length isn't known until the embedded
+      // player reports it (handled in setupPlayer/syncSessionDuration),
+      // so we start from a reasonable placeholder that gets corrected
+      // automatically the moment the video loads.
+      let dur = 300;
+      if (isDirect && !ytId) {
+        dur = await detectDirectVideoDuration(url);
+      }
+
+      linkPbarFill.style.width = '85%';
+      linkPbarLabel.textContent = 'Synthesizing lecture transcript & chapter boundaries…';
+      await wait(400);
+
       const lines = generateTranscript(dur);
       const chapters = detectChapters(lines);
 
+      const resolvedTitle = ytId && fetchedYtId === ytId && fetchedYtTitle
+        ? fetchedYtTitle
+        : (ytId ? `YouTube Lecture (${ytId})` : 'Web Video Lecture');
+
       const newSession = {
         id: uid(),
-        title: ytId ? `YouTube Lecture (${ytId})` : 'Web Video Lecture',
+        title: resolvedTitle,
         type: ytId ? 'youtube' : 'video',
         ytId: ytId || null,
         duration: dur,
@@ -746,6 +874,10 @@ document.addEventListener('DOMContentLoaded', () => {
       renderLibrary();
 
       linkInput.value = '';
+      if (ytThumbWrap) ytThumbWrap.style.display = 'none';
+      fetchedYtTitle = '';
+      fetchedYtId = null;
+
       toast(`Created session from link: "${newSession.title}"`);
       openSession(newSession);
     } catch (err) {
@@ -885,15 +1017,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const storedBlob = sessionStorage.getItem('momento_blob_' + session.id);
 
+    // Any previously-mounted YouTube player belongs to the last session —
+    // tear it down before mounting a new one (or a non-YouTube session).
+    if (ytPlayerInstance) {
+      try { ytPlayerInstance.destroy(); } catch {}
+      ytPlayerInstance = null;
+    }
+
     if (session.type === 'youtube' || (storedBlob && storedBlob.startsWith('yt:'))) {
       const ytId = session.ytId || storedBlob.replace('yt:', '');
       if (videoEl) videoEl.style.display = 'none';
       if (ytPlayerWrap) {
         ytPlayerWrap.style.display = 'block';
-        ytPlayerWrap.innerHTML = `<iframe id="ytIframe" width="100%" height="100%" src="${youtubeEmbedUrl(ytId, 0, false)}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+        ytPlayerWrap.innerHTML = '<div id="ytIframeHost" style="width:100%; height:100%;"></div>';
       }
+
+      // Mount a real YT.Player (not a static iframe) so we can read its
+      // true duration and actually drive play/pause/seek from it — this
+      // is what keeps the transcript, chapters, and quiz in sync with
+      // the video's real length and timestamps instead of a fixed clip.
+      loadYouTubeIframeAPI().then(() => {
+        if (!activeSession || activeSession.id !== session.id) return; // user switched sessions while loading
+        ytPlayerInstance = new YT.Player('ytIframeHost', {
+          width: '100%',
+          height: '100%',
+          videoId: ytId,
+          playerVars: { rel: 0, modestbranding: 1, enablejsapi: 1 },
+          events: {
+            onReady: (e) => {
+              const real = e.target.getDuration();
+              if (real && real > 0) syncSessionDuration(session, real);
+            },
+            onStateChange: (e) => {
+              const real = e.target.getDuration ? e.target.getDuration() : 0;
+              if (real && real > 0) syncSessionDuration(session, real);
+              if (e.data === YT.PlayerState.PLAYING) {
+                isPlaying = true;
+                updatePlayBtnIcon(true);
+              } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
+                isPlaying = false;
+                updatePlayBtnIcon(false);
+              }
+            }
+          }
+        });
+      });
     } else {
-      if (ytPlayerWrap) ytPlayerWrap.style.display = 'none';
+      if (ytPlayerWrap) {
+        ytPlayerWrap.style.display = 'none';
+        ytPlayerWrap.innerHTML = '';
+      }
       if (videoEl) {
         videoEl.style.display = 'block';
         if (storedBlob) videoEl.src = storedBlob;
@@ -901,14 +1074,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Interval to keep transcript sync moving smoothly
+    // Interval to keep transcript sync moving. For a real YouTube player
+    // we poll its actual playback position; for HTML5 video/audio the
+    // native ontimeupdate above does the work, this is just a safety
+    // net that mirrors currentTime for the seek bar / transcript.
     timerInterval = setInterval(() => {
-      if (isPlaying) {
+      if (!isPlaying) return;
+      if (ytPlayerInstance && typeof ytPlayerInstance.getCurrentTime === 'function') {
+        const real = ytPlayerInstance.getCurrentTime();
+        handleTimeUpdate(real);
+        if (real >= session.duration) pauseMedia();
+      } else if (!videoEl || videoEl.style.display === 'none') {
         currentTime = Math.min(session.duration, currentTime + 0.5);
         handleTimeUpdate(currentTime);
-        if (currentTime >= session.duration) {
-          pauseMedia();
-        }
+        if (currentTime >= session.duration) pauseMedia();
       }
     }, 500);
   }
@@ -947,7 +1126,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function playMedia() {
     isPlaying = true;
     updatePlayBtnIcon(true);
-    if (videoEl && videoEl.style.display !== 'none' && videoEl.src) {
+    if (ytPlayerInstance && typeof ytPlayerInstance.playVideo === 'function') {
+      ytPlayerInstance.playVideo();
+    } else if (videoEl && videoEl.style.display !== 'none' && videoEl.src) {
       videoEl.play().catch(() => {});
     }
   }
@@ -955,14 +1136,18 @@ document.addEventListener('DOMContentLoaded', () => {
   function pauseMedia() {
     isPlaying = false;
     updatePlayBtnIcon(false);
-    if (videoEl && videoEl.style.display !== 'none') {
+    if (ytPlayerInstance && typeof ytPlayerInstance.pauseVideo === 'function') {
+      ytPlayerInstance.pauseVideo();
+    } else if (videoEl && videoEl.style.display !== 'none') {
       videoEl.pause();
     }
   }
 
   function seekTo(seconds) {
     currentTime = Math.max(0, Math.min(activeSession ? activeSession.duration : 0, seconds));
-    if (videoEl && videoEl.style.display !== 'none') {
+    if (ytPlayerInstance && typeof ytPlayerInstance.seekTo === 'function') {
+      ytPlayerInstance.seekTo(currentTime, true);
+    } else if (videoEl && videoEl.style.display !== 'none') {
       videoEl.currentTime = currentTime;
     }
     handleTimeUpdate(currentTime);
