@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Momento — My Podcast Journey</title>
+  
+  <!-- 1. GATEKEEPER ROUTE GUARD (Blocks flash of content by executing before body load) -->
+  <script>
+    (function() {
+      const activeUser = sessionStorage.getItem('momento_current_user');
+      if (!activeUser) {
+        // Redirect instantly to login if visited anonymously
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/common.css">
+  
+  <style>
+    /* Prevent any display of body until authentication is verified and values are loaded */
+    body {
+      display: none;
+    }
+
+    .profile-page-wrapper {
+      position: relative;
+      min-height: 100vh;
+      color: var(--cloud);
+      padding-top: 100px;
+      padding-bottom: 80px;
+    }
+
+    .profile-hero-card {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 40px;
+    }
+
+    .profile-avatar-large {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--amber), #ff7e40);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 800;
+      box-shadow: 0 8px 24px rgba(242, 169, 59, 0.25);
+    }
+
+    .profile-hero-info h2 {
+      font-family: var(--ff-display);
+      font-size: 26px;
+      margin: 4px 0;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .profile-badge-tier {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: var(--amber);
+      display: block;
+    }
+
+    .streak-badge-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .streak-fire-pill, .streak-record-pill {
+      background: rgba(242, 169, 59, 0.1);
+      border: 1px solid rgba(242, 169, 59, 0.2);
+      color: var(--amber);
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    .streak-record-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .metric-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(242, 169, 59, 0.2);
+    }
+
+    .metric-icon {
+      font-size: 24px;
+    }
+
+    .metric-details h4 {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .metric-details p {
+      font-size: 12px;
+      color: var(--mist);
+      margin: 2px 0 0 0;
+    }
+
+    .profile-two-column-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .profile-two-column-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .profile-panel {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .profile-panel h3 {
+      font-family: var(--ff-display);
+      font-size: 18px;
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    /* History styling */
+    .history-item-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .history-thumbnail-placeholder {
+      width: 44px;
+      height: 44px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .history-item-details {
+      flex-grow: 1;
+    }
+
+    .history-item-details h5 {
+      margin: 0 0 6px 0;
+      font-size: 14.5px;
+      color: #fff;
+    }
+
+    .history-progress-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--mist);
+    }
+
+    .history-progress-track {
+      width: 100px;
+      height: 5px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .history-progress-fill {
+      height: 100%;
+      background: var(--amber);
+    }
+
+    /* Timeline notes */
+    .profile-timeline-note-card {
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid var(--amber);
+      padding: 14px;
+      border-radius: 0 10px 10px 0;
+      margin-bottom: 14px;
+    }
+
+    .timeline-note-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .note-timestamp-anchor {
+      font-weight: 700;
+      font-size: 12.5px;
+      color: var(--amber);
+    }
+
+    .note-podcast-source-tag {
+      font-size: 11px;
+      background: rgba(255,255,255,0.05);
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: #cbd5e1;
+    }
+
+    .note-text-snippet {
+      margin: 0;
+      font-size: 13.5px;
+      font-style: italic;
+      color: #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-aura">
+  <div class="aura-light aura-1"></div>
+  <div class="aura-light aura-2"></div>
+</div>
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<!-- Header Navigation Bar -->
+<header class="site">
+  <div class="wrap nav">
+    <a href="index.html" class="brand navlink"><span class="brand-mark"></span> momento</a>
+    <button type="button" class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="links" id="navLinks">
+      <a href="how.html" class="navlink">How it works</a>
+      <a href="app.html" class="navlink">Open the tool</a>
+      <a href="compare.html" class="navlink">Why Momento</a>
+    </nav>
+    <div class="nav-right" id="navAuthArea">
+      <a href="profile.html" class="btn btn-ghost btn-sm nav-cta" style="border-radius:20px; font-weight:600;" id="navProfileName">👤 Loading...</a>
+      <button type="button" class="btn btn-amber nav-cta" id="logoutBtn" style="padding:6px 14px;">Sign Out</button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap profile-page-wrapper">
+  
+  <!-- 1. Hero Student Profile Card -->
+  <div class="profile-hero-card">
+    <div class="profile-avatar-large" id="profileAvatar">-</div>
+    <div class="profile-hero-info">
+      <span class="profile-badge-tier">STUDENT MILESTONES</span>
+      <h2 id="profileName">Loading profile...</h2>
+      <p id="profileEmail">Retrieving account credentials...</p>
+      <div class="streak-badge-row">
+        <span class="streak-fire-pill">🔥 <span id="streakVal">0</span> Day Streak</span>
+        <span class="streak-record-pill">🏆 Record: <span id="bestStreakVal">0</span> days</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Section Header -->
+  <div style="margin-bottom: 24px;">
+    <span style="font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: var(--amber); display: block; margin-bottom: 4px;">YOUR DASHBOARD</span>
+    <h3 style="font-size: 22px; margin: 0; color: #fff; font-weight: 700;">My Podcast Journey</h3>
+  </div>
+
+  <!-- 3. Metrics Grid -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <span class="metric-icon">🎧</span>
+      <div class="metric-details">
+        <h4 id="statLectures">0</h4>
+        <p>Podcasts listened</p>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <span class="metric-icon">⏱️</span>
+      <div class="metric-details">
+        <h4 id="statTime">0h 0m</h4>
+        <p>Listening time</p>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <span class="metric-icon">🎯</span>
+      <div class="metric-details">
+        <h4 id="statQuizzes">0</h4>
+        <p>Quizzes completed</p>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <span class="metric-icon">🏆</span>
+      <div class="metric-details">
+        <h4 id="statAccuracy" style="color:var(--amber);">0%</h4>
+        <p>Quiz accuracy</p>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <span class="metric-icon">🔖</span>
+      <div class="metric-details">
+        <h4 id="statMoments">0</h4>
+        <p>Moments saved</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Two Column Subsections -->
+  <div class="profile-two-column-layout">
+    
+    <!-- Left Panel: Watched History -->
+    <div class="profile-panel">
+      <h3>Recent Study Sessions</h3>
+      <div id="historyList">
+        <div style="text-align:center; padding:30px; color:var(--mist);">Updating session history...</div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Timestamped Notes -->
+    <div class="profile-panel">
+      <h3>Personal Timestamp Notes</h3>
+      <div id="notesTimeline">
+        <div style="text-align:center; padding:30px; color:var(--mist);">Aggregating timestamp markers...</div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand"><span class="brand-mark"></span> momento</div>
+        <p class="foot-blurb">A study companion that turns a recording into a synced, searchable, testable session — built around one idea: every wrong answer should lead straight back to the moment that explains it.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Product</h5>
+        <nav class="foot-col-links">
+          <a href="index.html" class="navlink">Home</a>
+          <a href="how.html" class="navlink">How it works</a>
+          <a href="app.html" class="navlink">Open the tool</a>
+          <a href="compare.html" class="navlink">Why Momento</a>
+        </nav>
+      </div>
+      <div class="foot-col">
+        <h5>Built with</h5>
+        <div class="foot-badges">
+          <span class="foot-badge">Vanilla JavaScript</span>
+          <span class="foot-badge">LocalStorage</span>
+          <span class="foot-badge">Fetch API</span>
+          <span class="foot-badge">Hand-coded algorithms</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span class="foot-copy">© Momento. Built as a personal study tool.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/common.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    
+    // 1. Double check authentication status
+    const activeUser = JSON.parse(sessionStorage.getItem('momento_current_user'));
+    
+    if (!activeUser) {
+      window.location.replace('login.html');
+      return;
+    }
+
+    // 2. Display the authenticated user's dynamic information
+    const userName = activeUser.name || "Student User";
+    const userEmail = activeUser.email || "student@university.edu";
+    
+    document.getElementById('profileName').textContent = userName;
+    document.getElementById('profileEmail').textContent = userEmail;
+    document.getElementById('profileAvatar').textContent = userName.charAt(0).toUpperCase();
+    
+    const navProfile = document.getElementById('navProfileName');
+    if (navProfile) {
+      navProfile.textContent = '👤 ' + userName.split(' ')[0];
+    }
+
+    // 3. Read dynamic study streak statistics
+    const streakData = JSON.parse(localStorage.getItem('momento_streak_v1')) || { current: 0, best: 0 };
+    document.getElementById('streakVal').textContent = streakData.current;
+    document.getElementById('bestStreakVal').textContent = streakData.best;
+
+    // 4. Retrieve and aggregate current user data from browser database
+    const library = JSON.parse(localStorage.getItem('momento_library_v1')) || [];
+    
+    // A. Total Podcasts Listened
+    const podcastsListened = library.length;
+    document.getElementById('statLectures').textContent = podcastsListened;
+
+    // B. Calculate actual total watched/listened time
+    let totalWatchedSeconds = 0;
+    let totalQuizzesCompleted = 0;
+    let totalQuizScoreSum = 0;
+    let totalQuizQuestionsSum = 0;
+
+    library.forEach(session => {
+      // Accumulate play logs (how far they actually watched each file)
+      if (session.lastPositionSeconds) {
+        totalWatchedSeconds += session.lastPositionSeconds;
+      }
+      // Accumulate quiz attempts and score accuracy
+      if (session.quizAttempts) {
+        session.quizAttempts.forEach(attempt => {
+          totalQuizzesCompleted++;
+          totalQuizScoreSum += attempt.score;
+          totalQuizQuestionsSum += attempt.totalQuestions;
+        });
+      }
+    });
+
+    // Format cumulative watched seconds to "Hh Mm"
+    const hours = Math.floor(totalWatchedSeconds / 3600);
+    const minutes = Math.round((totalWatchedSeconds % 3600) / 60);
+    document.getElementById('statTime').textContent = `${hours}h ${minutes}m`;
+    
+    // C. Quiz Metrics calculations
+    document.getElementById('statQuizzes').textContent = totalQuizzesCompleted;
+    const finalAccuracy = totalQuizQuestionsSum > 0 
+      ? Math.round((totalQuizScoreSum / totalQuizQuestionsSum) * 100) 
+      : 0;
+    document.getElementById('statAccuracy').textContent = `${finalAccuracy}%`;
+
+    // D. Extract and match notes
+    let totalMomentsCount = 0;
+    const notesTimelineData = [];
+
+    // Loop through dynamic LocalStorage keys to extract notes
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith('momento_notes_')) {
+        const podcastId = key.replace('momento_notes_', '');
+        const sessionNotes = JSON.parse(localStorage.getItem(key)) || [];
+        totalMomentsCount += sessionNotes.length;
+
+        // Associate note to the active podcast title in library
+        const matchedPodcast = library.find(item => item.id === podcastId || item._id === podcastId);
+        const podcastTitle = matchedPodcast ? matchedPodcast.title : "Lecture Session";
+
+        sessionNotes.forEach(note => {
+          notesTimelineData.push({
+            timestamp: note.timestamp || 0,
+            podcastTitle: podcastTitle,
+            noteText: note.text || "",
+            createdAt: note.createdAt || new Date().toISOString()
+          });
+        });
+      }
+    }
+    document.getElementById('statMoments').textContent = totalMomentsCount;
+
+    // 5. RENDER RECENT SESSION HISTORY CARDS WITH PROGRESS BARS
+    const historyContainer = document.getElementById('historyList');
+    if (library.length === 0) {
+      historyContainer.innerHTML = `
+        <div style="text-align:center; padding: 30px; color: var(--mist);">
+          <p>You haven't played any study sessions yet.</p>
+          <a href="app.html" class="btn btn-amber btn-sm" style="margin-top:10px; display:inline-block;">Open Study Tool</a>
+        </div>
+      `;
+    } else {
+      // Sort sessions by latest active tracking timestamp
+      const sortedSessions = [...library].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)).slice(0, 5);
+      
+      historyContainer.innerHTML = sortedSessions.map(session => {
+        const progressPercent = session.durationSeconds > 0 
+          ? Math.round((session.lastPositionSeconds || 0) / session.durationSeconds * 100) 
+          : 0;
+        
+        return `
+          <div class="history-item-card" style="cursor: pointer;" onclick="window.location.href='app.html?id=${session.id || session._id}'">
+            <div class="history-thumbnail-placeholder">🎧</div>
+            <div class="history-item-details">
+              <h5>${session.title || "Untitled Session"}</h5>
+              <div class="history-progress-container">
+                <div class="history-progress-track">
+                  <div class="history-progress-fill" style="width: ${progressPercent}%"></div>
+                </div>
+                <span>${progressPercent}% completed</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 6. RENDER DYNAMIC HIGHLIGHTS TIMELINE
+    const notesContainer = document.getElementById('notesTimeline');
+    if (notesTimelineData.length === 0) {
+      notesContainer.innerHTML = `
+        <div style="text-align:center; padding: 30px; color: var(--mist);">
+          <p>No timestamp highlights saved yet.</p>
+          <p style="font-size:12px;">Add notes inside the player panel to drop bookmarks!</p>
+        </div>
+      `;
+    } else {
+      notesTimelineData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      notesContainer.innerHTML = notesTimelineData.map(note => {
+        const formatTime = (totalSeconds) => {
+          const m = Math.floor(totalSeconds / 60);
+          const s = Math.floor(totalSeconds % 60);
+          return `${m}:${s < 10 ? '0' : ''}${s}`;
+        };
+
+        return `
+          <div class="profile-timeline-note-card">
+            <div class="timeline-note-header">
+              <span class="note-timestamp-anchor">📍 ${formatTime(note.timestamp)}</span>
+              <span class="note-podcast-source-tag">${note.podcastTitle}</span>
+            </div>
+            <p class="note-text-snippet">"${note.noteText}"</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 7. SECURITY SIGN-OUT
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        sessionStorage.removeItem('momento_current_user');
+        window.location.href = 'login.html';
+      });
+    }
+
+    // Reveal page after authentication is verified and dynamic values are loaded
+    document.body.style.display = 'block';
+
+  });
+</script>
+</body>
+</html>
