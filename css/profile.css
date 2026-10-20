@@ -1,0 +1,232 @@
+.profile-page-wrapper {
+  position: relative;
+  min-height: 100vh;
+  background-color: #0c0f17;
+  color: var(--cloud);
+  overflow-x: hidden;
+}
+
+.profile-hero-card {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 35px;
+  margin-bottom: 40px;
+}
+
+.profile-avatar-large {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--amber), #ff7e40);
+  color: #fff;
+  font-size: 38px;
+  font-weight: 800;
+  box-shadow: 0 8px 24px rgba(242, 169, 59, 0.25);
+}
+
+.profile-hero-info h2 {
+  font-family: var(--ff-display);
+  font-size: 28px;
+  margin: 4px 0;
+  color: #fff;
+}
+
+.profile-badge-tier {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--amber);
+}
+
+.streak-badge-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.streak-fire-pill, .streak-record-pill {
+  background: rgba(242, 169, 59, 0.1);
+  border: 1px solid rgba(242, 169, 59, 0.2);
+  color: var(--amber);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.metric-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(242, 169, 59, 0.2);
+}
+
+.metric-icon {
+  font-size: 24px;
+}
+
+.metric-details h4 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.metric-details p {
+  font-size: 12px;
+  color: var(--mist);
+  margin: 2px 0 0 0;
+}
+
+.profile-two-column-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .profile-two-column-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 24px;
+  min-height: 350px;
+}
+
+.profile-panel h3 {
+  font-family: var(--ff-display);
+  font-size: 18px;
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #fff;
+}
+
+/* History styling */
+.history-item-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: background 0.2s ease;
+}
+
+.history-item-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.history-thumbnail-placeholder {
+  width: 44px;
+  height: 44px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-item-details {
+  flex-grow: 1;
+}
+
+.history-item-details h5 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+}
+
+.history-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--mist);
+}
+
+.history-progress-track {
+  width: 100px;
+  height: 5px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.history-progress-fill {
+  height: 100%;
+  background: var(--amber);
+}
+
+/* Timeline notes */
+.profile-timeline-note-card {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 3px solid var(--amber);
+  padding: 14px;
+  border-radius: 0 10px 10px 0;
+  cursor: pointer;
+  margin-bottom: 14px;
+}
+
+.timeline-note-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.note-timestamp-anchor {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--amber);
+}
+
+.note-podcast-source-tag {
+  font-size: 11px;
+  background: rgba(255,255,255,0.05);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.note-text-snippet {
+  margin: 0;
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--cloud);
+}
+
+.note-date-added {
+  display: block;
+  font-size: 10px;
+  color: var(--mist);
+  margin-top: 8px;
+  text-align: right;
+}
