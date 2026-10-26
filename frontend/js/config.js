@@ -10,7 +10,7 @@
   'use strict';
 
   const LOCAL_API_URL = 'http://localhost:5050/api';
-  const PRODUCTION_API_URL = 'https://momento-api.onrender.com/api';
+const PRODUCTION_API_URL = 'https://momento-backend-tueo.onrender.com/api';
 
   // Opening the site from localhost / 127.0.0.1 (VS Code Live Server,
   // `npx serve`, ...) talks to the backend running on this machine;
