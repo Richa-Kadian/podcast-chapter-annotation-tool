@@ -1,0 +1,1624 @@
+{
+  "info": {
+    "name": "Momento API (CE2)",
+    "description": "End-to-end tests for the Momento backend. Set baseUrl to http://localhost:5050/api (local) or the deployed URL, then run the whole collection in order (Collection Runner / Thunder Client / newman). Each run signs up two brand-new users, so it can be repeated.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5050/api"
+    },
+    {
+      "key": "emailA",
+      "value": ""
+    },
+    {
+      "key": "emailB",
+      "value": ""
+    },
+    {
+      "key": "tokenA",
+      "value": ""
+    },
+    {
+      "key": "tokenB",
+      "value": ""
+    },
+    {
+      "key": "lectureId",
+      "value": ""
+    },
+    {
+      "key": "noteId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Database is connected', () => pm.expect(pm.response.json().data.database).to.eql('connected'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication",
+      "item": [
+        {
+          "name": "Register user A",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('emailA', 'alice_' + Date.now() + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "var data = pm.response.json().data;",
+                  "pm.test('Returns a token and the user', () => { pm.expect(data.token).to.be.a('string'); pm.expect(data.user.email).to.eql(pm.collectionVariables.get('emailA')); });",
+                  "pm.test('Password is never returned', () => pm.expect(data.user).to.not.have.property('password'));",
+                  "pm.collectionVariables.set('tokenA', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Student\",\n  \"email\": \"{{emailA}}\",\n  \"password\": \"Secret#123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register duplicate email (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error response has success:false and a message', () => { const b = pm.response.json(); pm.expect(b.success).to.eql(false); pm.expect(b.message).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Again\",\n  \"email\": \"{{emailA}}\",\n  \"password\": \"Secret#123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register with invalid fields (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Lists each invalid field', () => pm.expect(pm.response.json().errors).to.have.all.keys('name', 'email', 'password'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"A\",\n  \"email\": \"not-an-email\",\n  \"password\": \"short\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login with valid credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tokenA', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailA}}\",\n  \"password\": \"Secret#123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login with wrong password (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error response has success:false and a message', () => { const b = pm.response.json(); pm.expect(b.success).to.eql(false); pm.expect(b.message).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailA}}\",\n  \"password\": \"Wrong#999\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login with unknown email (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody-here@example.com\",\n  \"password\": \"Secret#123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login with \"demo\" email no longer bypasses auth (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@example.com\",\n  \"password\": \"anything\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get current user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is user A', () => pm.expect(pm.response.json().data.user.email).to.eql(pm.collectionVariables.get('emailA')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get current user without token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error response has success:false and a message', () => { const b = pm.response.json(); pm.expect(b.success).to.eql(false); pm.expect(b.message).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Lectures",
+      "item": [
+        {
+          "name": "List lectures without token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/lectures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create lecture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "var data = pm.response.json().data;",
+                  "pm.test('Has an id and the transcript', () => { pm.expect(data.id).to.be.a('string'); pm.expect(data.lines).to.have.length(3); });",
+                  "pm.collectionVariables.set('lectureId', data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Intro to JavaScript\",\n  \"type\": \"video\",\n  \"duration\": 120,\n  \"genre\": \"Lecture Study\",\n  \"lines\": [\n    {\n      \"start\": 0,\n      \"end\": 30,\n      \"speaker\": \"Prof. Miller\",\n      \"text\": \"Variables hold references in memory.\",\n      \"keyword\": \"variables\"\n    },\n    {\n      \"start\": 30,\n      \"end\": 60,\n      \"speaker\": \"Dr. Aris\",\n      \"text\": \"Functions are first-class citizens.\",\n      \"keyword\": \"functions\"\n    },\n    {\n      \"start\": 60,\n      \"end\": 120,\n      \"speaker\": \"TA Alex\",\n      \"text\": \"Arrays are dynamic sequences.\",\n      \"keyword\": \"arrays\"\n    }\n  ],\n  \"chapters\": [\n    {\n      \"startIndex\": 0,\n      \"startTime\": 0,\n      \"endTime\": 60,\n      \"title\": \"Variables & Data References\",\n      \"keyword\": \"variables\"\n    },\n    {\n      \"startIndex\": 2,\n      \"startTime\": 60,\n      \"endTime\": 120,\n      \"title\": \"Array Methods & Iteration\",\n      \"keyword\": \"arrays\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create lecture with invalid data (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Reports title, type and duration', () => pm.expect(pm.response.json().errors).to.include.keys('title', 'type', 'duration'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"podcast\",\n  \"duration\": -5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List my lectures",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Contains the new lecture', () => pm.expect(pm.response.json().data.map(l => l.id)).to.include(pm.collectionVariables.get('lectureId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get one lecture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Includes transcript lines', () => pm.expect(pm.response.json().data.lines).to.have.length(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get lecture with malformed id (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/not-a-valid-id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "not-a-valid-id"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get lecture that does not exist (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/507f1f77bcf86cd799439011",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "507f1f77bcf86cd799439011"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update lecture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Title updated', () => pm.expect(pm.response.json().data.title).to.eql('Intro to JavaScript (revised)'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Intro to JavaScript (revised)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Notes",
+      "item": [
+        {
+          "name": "Create timestamped note",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('noteId', pm.response.json().data.id);",
+                  "pm.test('Time saved', () => pm.expect(pm.response.json().data.time).to.eql(42.5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Closures keep outer variables alive\",\n  \"time\": 42.5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}",
+                "notes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create empty note (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"\",\n  \"time\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}",
+                "notes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List notes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('One note', () => pm.expect(pm.response.json().data).to.have.length(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}",
+                "notes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update note",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Closures keep outer variables alive (see 0:42)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notes/{{noteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notes",
+                "{{noteId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Quiz & Progress",
+      "item": [
+        {
+          "name": "Save quiz attempt (50%)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "var d = pm.response.json().data;",
+                  "pm.test('Graded on the server', () => { pm.expect(d.attempt.score).to.eql(1); pm.expect(d.attempt.percentage).to.eql(50); pm.expect(d.bestScore).to.eql(50); });",
+                  "pm.test('50% does not start a streak', () => pm.expect(d.streak.current).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\n      \"question\": \"Fill in the blank: \\\"__________ hold references in memory.\\\"\",\n      \"correctAnswer\": \"variables\",\n      \"selectedAnswer\": \"variables\",\n      \"timestamp\": 0,\n      \"chapter\": \"Variables & Data References\"\n    },\n    {\n      \"question\": \"Fill in the blank: \\\"__________ hold references in memory.\\\"\",\n      \"correctAnswer\": \"variables\",\n      \"selectedAnswer\": \"arrays\",\n      \"timestamp\": 0,\n      \"chapter\": \"Variables & Data References\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}/quiz-attempts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}",
+                "quiz-attempts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save quiz attempt (100%)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "var d = pm.response.json().data;",
+                  "pm.test('Best score and streak updated', () => { pm.expect(d.bestScore).to.eql(100); pm.expect(d.streak.current).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\n      \"question\": \"Fill in the blank: \\\"__________ hold references in memory.\\\"\",\n      \"correctAnswer\": \"variables\",\n      \"selectedAnswer\": \"variables\",\n      \"timestamp\": 0,\n      \"chapter\": \"Variables & Data References\"\n    },\n    {\n      \"question\": \"Fill in the blank: \\\"__________ hold references in memory.\\\"\",\n      \"correctAnswer\": \"variables\",\n      \"selectedAnswer\": \"variables\",\n      \"timestamp\": 0,\n      \"chapter\": \"Variables & Data References\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}/quiz-attempts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}",
+                "quiz-attempts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save quiz attempt without answers (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}/quiz-attempts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}",
+                "quiz-attempts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List quiz attempts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Two attempts', () => pm.expect(pm.response.json().data).to.have.length(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}/quiz-attempts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}",
+                "quiz-attempts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save flashcard progress",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"known\": [\n    \"fc_0\",\n    \"fc_1\"\n  ],\n  \"studying\": [\n    \"fc_2\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/progress/flashcards/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "progress",
+                "flashcards",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get flashcard progress",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Piles saved', () => pm.expect(pm.response.json().data.known).to.eql(['fc_0', 'fc_1']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/progress/flashcards/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "progress",
+                "flashcards",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get study progress",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Streak is 1, best 1', () => { const s = pm.response.json().data.streak; pm.expect(s.current).to.eql(1); pm.expect(s.best).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "progress"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Another user's data",
+      "item": [
+        {
+          "name": "Register user B",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('emailB', 'bob_' + Date.now() + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('tokenB', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bob Student\",\n  \"email\": \"{{emailB}}\",\n  \"password\": \"Secret#123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "B reads A's lecture (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Error response has success:false and a message', () => { const b = pm.response.json(); pm.expect(b.success).to.eql(false); pm.expect(b.message).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenB}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "B updates A's lecture (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenB}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hacked\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "B reads A's notes (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenB}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}",
+                "notes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "B deletes A's note (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenB}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notes/{{noteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notes",
+                "{{noteId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "B's library does not include A's lecture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Empty library', () => pm.expect(pm.response.json().data).to.have.length(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenB}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A's lecture is unchanged",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Title not hacked', () => pm.expect(pm.response.json().data.title).to.eql('Intro to JavaScript (revised)'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Delete & logout",
+      "item": [
+        {
+          "name": "Delete note",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notes/{{noteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notes",
+                "{{noteId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete lecture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get deleted lecture (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lectures/{{lectureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lectures",
+                "{{lectureId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Old token rejected after logout (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Malformed JSON body (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Explains the problem', () => pm.expect(pm.response.json().message).to.eql('Request body is not valid JSON'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"broken\""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

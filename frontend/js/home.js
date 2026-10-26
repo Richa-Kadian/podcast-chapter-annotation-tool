@@ -6,7 +6,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
 
-  const { $, $$, toast, LIB_KEY, scopedKey, getCurrentUser } = window.Momento;
+  const { $, $$, toast, api, getCurrentUser } = window.Momento;
 
   // -------------------------------------------------------------
   // 1. Hero Live Sync Simulation
@@ -93,19 +93,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. Library Count Indicator
   // -------------------------------------------------------------
   const libNote = $('#lib-count-note');
-  if (libNote) {
-    try {
-      // Only ever look at the signed-in user's own bucket. A signed-out
-      // visitor, or a brand-new account, has nothing to show here yet.
-      const user = getCurrentUser();
-      if (user) {
-        const raw = localStorage.getItem(scopedKey(LIB_KEY));
-        const items = raw ? JSON.parse(raw) : [];
+  // A signed-out visitor has nothing to show here; for a signed-in user
+  // the count comes from their library on the server.
+  if (libNote && getCurrentUser()) {
+    api.get('/lectures')
+      .then((items) => {
         if (items.length > 0) {
-          libNote.innerHTML = `📚 <b>${items.length}</b> study session${items.length === 1 ? '' : 's'} saved in your browser. <a href="app.html" style="color:var(--amber); text-decoration:underline; font-weight:600;">Open your library →</a>`;
+          libNote.innerHTML = `📚 <b>${items.length}</b> study session${items.length === 1 ? '' : 's'} saved in your account. <a href="app.html" style="color:var(--amber); text-decoration:underline; font-weight:600;">Open your library →</a>`;
         }
-      }
-    } catch {}
+      })
+      .catch(() => {}); // the count is optional — keep the page quiet if the API is down
   }
 
   // -------------------------------------------------------------
@@ -217,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
     flashcards: {
       title: '3D Interactive Flashcards',
       desc: 'Rapid term drills with 3D card flips.',
-      body: 'Automatically categorizes concepts and provides spaced-repetition tracking ("Known" vs "To Review") saved to browser LocalStorage.'
+      body: 'Automatically categorizes concepts and provides spaced-repetition tracking ("Known" vs "To Review") saved to your Momento account.'
     },
     notes: {
       title: 'Timestamp-Linked Smart Notes',

@@ -15,11 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     wait,
     fetchWithTimeout,
     toast,
-    getCurrentUser,
-    requireAuth,
-    scopedKey,
-    LIB_KEY,
-    STREAK_KEY
+    api,
+    getCurrentUser
   } = window.Momento;
 
   // -------------------------------------------------------------
@@ -271,27 +268,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Algorithm 4: Streak & Scoring Manager
+  // The streak rules now run on the server (backend/src/services/streakService.js)
+  // every time a quiz attempt is saved; the browser keeps the latest copy
+  // for display. A score of 60%+ counts as a study day.
+  let streakState = { current: 0, best: 0, lastDate: null };
+
   function getStreak() {
-    try {
-      return JSON.parse(localStorage.getItem(scopedKey(STREAK_KEY))) || { current: 0, best: 0, lastDate: null };
-    } catch {
-      return { current: 0, best: 0, lastDate: null };
-    }
+    return streakState;
   }
 
-  function recordStreak(scorePct) {
-    const streak = getStreak();
-    const today = new Date().toDateString();
-
-    if (scorePct >= 60) {
-      if (streak.lastDate !== today) {
-        streak.current += 1;
-        if (streak.current > streak.best) streak.best = streak.current;
-        streak.lastDate = today;
-      }
-    }
-    localStorage.setItem(scopedKey(STREAK_KEY), JSON.stringify(streak));
-    return streak;
+  async function loadStreak() {
+    try {
+      const progress = await api.get('/progress');
+      streakState = progress.streak;
+      updateDevPanel();
+    } catch {}
   }
 
   // -------------------------------------------------------------
@@ -336,25 +327,40 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentTime = 0;
   let timerInterval = null;
 
-  function loadLibrary() {
-    try {
-      const raw = localStorage.getItem(scopedKey(LIB_KEY));
-      library = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(library)) library = [];
-    } catch {
-      library = [];
+  // The library list comes from GET /api/lectures. It leaves out each
+  // lecture's transcript lines to stay small; openSession() fetches the
+  // full lecture when one is opened.
+  async function loadLibrary() {
+    const libEmptyText = libEmpty ? libEmpty.textContent : '';
+    if (libEmpty) {
+      libEmpty.textContent = 'Loading your library…';
+      libEmpty.style.display = 'block';
     }
+    try {
+      library = await api.get('/lectures');
+    } catch (err) {
+      library = [];
+      toast(`Couldn't load your library: ${err.message}`, { err: true });
+    }
+    if (libEmpty) libEmpty.textContent = libEmptyText;
     renderLibrary();
     updateDevPanel();
   }
 
-  function saveLibrary() {
-    try {
-      localStorage.setItem(scopedKey(LIB_KEY), JSON.stringify(library));
-      updateDevPanel();
-    } catch {
-      toast("Couldn't save to LocalStorage - storage may be full.", { err: true });
-    }
+  // Saves a newly processed session to MongoDB and returns the stored
+  // version (which carries the server-generated id).
+  async function saveNewSession(session) {
+    const saved = await api.post('/lectures', session);
+    library.unshift(saved);
+    renderLibrary();
+    updateDevPanel();
+    return saved;
+  }
+
+  function replaceInLibrary(session) {
+    const idx = library.findIndex(s => s.id === session.id);
+    if (idx !== -1) library[idx] = session;
+    updateDevPanel();
   }
 
   // Re-generates a session's transcript/chapters against its *real*
@@ -369,10 +375,13 @@ document.addEventListener('DOMContentLoaded', () => {
     session.lines = generateTranscript(rounded);
     session.chapters = detectChapters(session.lines);
 
-    const idx = library.findIndex(s => s.id === session.id);
-    if (idx !== -1) library[idx] = session;
-    saveLibrary();
+    replaceInLibrary(session);
     renderLibrary();
+    api.put(`/lectures/${session.id}`, {
+      duration: session.duration,
+      lines: session.lines,
+      chapters: session.chapters
+    }).catch((err) => toast(`Couldn't save the updated video length: ${err.message}`, { err: true }));
 
     if (activeSession && activeSession.id === session.id) {
       if (wsMeta) wsMeta.textContent = `${fmtTime(session.duration)} · ${session.chapters ? session.chapters.length : 0} chapters`;
@@ -711,29 +720,25 @@ document.addEventListener('DOMContentLoaded', () => {
         pbarLabel.textContent = 'Building study session…';
         await wait(400);
 
-        const newSession = {
-          id: uid(),
+        // Only the lecture's metadata, transcript and chapters go to the
+        // server — the media file itself stays on this device.
+        const newSession = await saveNewSession({
           title: selectedFile.name.replace(/\.[^/.]+$/, ''),
           type: isVideo ? 'video' : 'audio',
           duration: detectedDuration,
           lines,
           chapters,
-          genre: 'Lecture Study',
-          createdAt: new Date().toISOString(),
-          bestScore: null
-        };
+          genre: 'Lecture Study'
+        });
 
         // Store blob URL in sessionStorage for active playback
         sessionStorage.setItem('momento_blob_' + newSession.id, fileUrl);
 
-        library.unshift(newSession);
-        saveLibrary();
-        renderLibrary();
-
         toast(`Created session: "${newSession.title}"`);
         openSession(newSession);
       } catch (err) {
-        toast("Something went wrong processing that file. Please try again.", { err: true });
+        const reason = err instanceof api.ApiError ? ` ${err.message}` : ' Please try again.';
+        toast(`Something went wrong processing that file.${reason}`, { err: true });
       } finally {
         processBtn.disabled = false;
         processBar.classList.remove('on');
@@ -850,28 +855,24 @@ document.addEventListener('DOMContentLoaded', () => {
         ? fetchedYtTitle
         : (ytId ? `YouTube Lecture (${ytId})` : 'Web Video Lecture');
 
-      const newSession = {
-        id: uid(),
+      // A link is a permanent reference, so (unlike a local file) it is
+      // saved with the lecture and the video still plays after a refresh.
+      const newSession = await saveNewSession({
         title: resolvedTitle,
         type: ytId ? 'youtube' : 'video',
-        ytId: ytId || null,
+        ytId: ytId || undefined,
+        mediaUrl: ytId ? undefined : url,
         duration: dur,
         lines,
         chapters,
-        genre: 'Online Lecture',
-        createdAt: new Date().toISOString(),
-        bestScore: null
-      };
+        genre: 'Online Lecture'
+      });
 
       if (ytId) {
         sessionStorage.setItem('momento_blob_' + newSession.id, 'yt:' + ytId);
       } else {
         sessionStorage.setItem('momento_blob_' + newSession.id, url);
       }
-
-      library.unshift(newSession);
-      saveLibrary();
-      renderLibrary();
 
       linkInput.value = '';
       if (ytThumbWrap) ytThumbWrap.style.display = 'none';
@@ -881,7 +882,8 @@ document.addEventListener('DOMContentLoaded', () => {
       toast(`Created session from link: "${newSession.title}"`);
       openSession(newSession);
     } catch (err) {
-      toast("Something went wrong resolving that link. Please try again.", { err: true });
+      const reason = err instanceof api.ApiError ? ` ${err.message}` : ' Please try again.';
+      toast(`Something went wrong resolving that link.${reason}`, { err: true });
     } finally {
       linkSubmitBtn.disabled = false;
       linkProcessBar.classList.remove('on');
@@ -935,13 +937,19 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      card.querySelector('.lib-delete-btn').addEventListener('click', (e) => {
+      card.querySelector('.lib-delete-btn').addEventListener('click', async (e) => {
         e.stopPropagation();
         if (confirm(`Delete "${item.title}" from your library?`)) {
+          try {
+            // The server also deletes this lecture's notes, quiz attempts and flashcard progress.
+            await api.del(`/lectures/${item.id}`);
+          } catch (err) {
+            toast(`Couldn't delete this session: ${err.message}`, { err: true });
+            return;
+          }
           library = library.filter(s => s.id !== item.id);
-          localStorage.removeItem('momento_notes_' + item.id);
-          localStorage.removeItem('momento_fc_states_' + item.id);
-          saveLibrary();
+          sessionStorage.removeItem('momento_blob_' + item.id);
+          updateDevPanel();
           if (activeSession && activeSession.id === item.id) {
             activeSession = null;
             if (workspace) workspace.classList.remove('open');
@@ -959,7 +967,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------
   // 8. Open & Activate Session Workspace
   // -------------------------------------------------------------
-  function openSession(session) {
+  async function openSession(session) {
+    // Library entries arrive without transcript lines; load the full lecture once.
+    if (!session.lines) {
+      try {
+        const fullSession = await api.get(`/lectures/${session.id}`);
+        replaceInLibrary(fullSession);
+        session = fullSession;
+      } catch (err) {
+        toast(`Couldn't open this session: ${err.message}`, { err: true });
+        return;
+      }
+    }
+
     activeSession = session;
     renderLibrary();
 
@@ -986,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Init Flashcards & Notes
     initFlashcards(session);
-    renderNotes(session);
+    loadNotes(session);
 
     // Enable Quiz button
     if (getTestBtn) getTestBtn.disabled = false;
@@ -998,6 +1018,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------------------------
   // 9. Media Player Controller (HTML5 & YouTube)
   // -------------------------------------------------------------
+  // Where to play a session's media from. A local file only has a
+  // temporary blob URL in sessionStorage (gone after the tab closes);
+  // a direct video link is also saved on the lecture as mediaUrl.
+  function getPlayableSource(session) {
+    return sessionStorage.getItem('momento_blob_' + session.id) || session.mediaUrl || null;
+  }
+
+  const LOCAL_MEDIA_MISSING_MSG = 'This recording was a file on your device, so only its transcript and study data are saved. Process the file again to play it.';
+
   function setupPlayer(session) {
     clearInterval(timerInterval);
     currentTime = 0;
@@ -1015,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', () => {
       seekTrack.setAttribute('aria-valuetext', `0:00 of ${fmtTime(session.duration)}`);
     }
 
-    const storedBlob = sessionStorage.getItem('momento_blob_' + session.id);
+    const storedBlob = getPlayableSource(session);
 
     // Any previously-mounted YouTube player belongs to the last session —
     // tear it down before mounting a new one (or a non-YouTube session).
@@ -1069,7 +1098,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (videoEl) {
         videoEl.style.display = 'block';
-        if (storedBlob) videoEl.src = storedBlob;
+        if (storedBlob) {
+          videoEl.src = storedBlob;
+        } else {
+          videoEl.removeAttribute('src');
+          videoEl.load();
+          toast(LOCAL_MEDIA_MISSING_MSG, { ms: 6000 });
+        }
+        // A blob: URL dies with the page that created it, so after a refresh
+        // the copy in sessionStorage no longer plays. Forget it and explain.
+        videoEl.onerror = () => {
+          if (!videoEl.src.startsWith('blob:')) return;
+          sessionStorage.removeItem('momento_blob_' + session.id);
+          toast(LOCAL_MEDIA_MISSING_MSG, { ms: 6000 });
+        };
         videoEl.ontimeupdate = () => handleTimeUpdate(videoEl.currentTime);
       }
     }
@@ -1312,6 +1354,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentQIdx = 0;
   let quizScore = 0;
   let missedQuestions = [];
+  let quizAnswers = []; // every answer given, sent to the server when the quiz ends
   let lastFocusedBeforeQuiz = null;
 
   quizLenBtns.forEach((btn) => {
@@ -1352,6 +1395,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentQIdx = 0;
       quizScore = 0;
       missedQuestions = [];
+      quizAnswers = [];
 
       openQuiz();
       renderQuizQuestion();
@@ -1392,6 +1436,13 @@ document.addEventListener('DOMContentLoaded', () => {
     $$('.quiz-opt', quizOpts).forEach(b => b.disabled = true);
 
     const isCorrect = selectedOption.toLowerCase() === q.answer.toLowerCase();
+    quizAnswers.push({
+      question: q.question,
+      correctAnswer: q.answer,
+      selectedAnswer: selectedOption,
+      timestamp: q.timestamp,
+      chapter: q.chapter
+    });
 
     if (isCorrect) {
       optBtn.classList.add('correct');
@@ -1450,7 +1501,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderInlineReviewPlayer(timestamp) {
     if (!inlineReviewPlayer || !activeSession) return;
 
-    const storedBlob = sessionStorage.getItem('momento_blob_' + activeSession.id);
+    const storedBlob = getPlayableSource(activeSession);
     const isYoutube = activeSession.type === 'youtube' || (storedBlob && storedBlob.startsWith('yt:'));
 
     if (isYoutube) {
@@ -1494,19 +1545,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (resultsScore) resultsScore.textContent = `${pct}%`;
     if (resultsSub) resultsSub.textContent = `${quizScore} of ${currentQuiz.length} questions correct`;
 
-    // Save best score to session
-    if (activeSession) {
-      if (activeSession.bestScore === null || pct > (activeSession.bestScore || 0)) {
-        activeSession.bestScore = pct;
-        saveLibrary();
-        renderLibrary();
-        if (wsBestScoreBadge) wsBestScoreBadge.textContent = `${pct}%`;
-      }
-    }
-
-    // Record Streak
-    const streak = recordStreak(pct);
-    if (streakRow) streakRow.innerHTML = `🔥 Daily Study Streak: <b>${streak.current} days</b> (Personal Best: ${streak.best})`;
+    // Save the attempt. The server re-grades it, updates the best score
+    // and the streak, and sends both back.
+    if (activeSession) saveQuizAttempt(activeSession);
 
     if (badgeRow) {
       badgeRow.innerHTML = pct === 100
@@ -1526,6 +1567,28 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         weakList.style.display = 'none';
       }
+    }
+  }
+
+  function renderStreakRow(streak) {
+    if (streakRow) streakRow.innerHTML = `🔥 Daily Study Streak: <b>${streak.current} days</b> (Personal Best: ${streak.best})`;
+  }
+
+  async function saveQuizAttempt(session) {
+    if (streakRow) streakRow.textContent = '🔥 Saving your result…';
+    try {
+      const result = await api.post(`/lectures/${session.id}/quiz-attempts`, { answers: quizAnswers });
+      session.bestScore = result.bestScore;
+      streakState = result.streak;
+      renderStreakRow(result.streak);
+      renderLibrary();
+      updateDevPanel();
+      if (activeSession && activeSession.id === session.id && wsBestScoreBadge) {
+        wsBestScoreBadge.textContent = `${result.bestScore}%`;
+      }
+    } catch (err) {
+      renderStreakRow(streakState);
+      toast(`Your score couldn't be saved: ${err.message}`, { err: true });
     }
   }
 
@@ -1583,18 +1646,20 @@ document.addEventListener('DOMContentLoaded', () => {
       speaker: l.speaker
     }));
 
-    const fcKey = `momento_fc_states_${session.id}`;
-    try {
-      const saved = JSON.parse(localStorage.getItem(fcKey)) || { known: [], studying: [] };
-      knownIds = saved.known || [];
-      studyingIds = saved.studying || [];
-    } catch {
-      knownIds = [];
-      studyingIds = [];
-    }
-
+    // Show the deck right away, then fill in the saved piles from the server.
+    knownIds = [];
+    studyingIds = [];
     currentFcIdx = 0;
     renderFlashcard();
+
+    api.get(`/progress/flashcards/${session.id}`)
+      .then((saved) => {
+        if (!activeSession || activeSession.id !== session.id) return; // switched sessions meanwhile
+        knownIds = saved.known || [];
+        studyingIds = saved.studying || [];
+        renderFlashcard();
+      })
+      .catch((err) => toast(`Couldn't load flashcard progress: ${err.message}`, { err: true }));
   }
 
   function renderFlashcard() {
@@ -1667,21 +1732,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveFcState() {
     if (!activeSession) return;
-    localStorage.setItem(`momento_fc_states_${activeSession.id}`, JSON.stringify({ known: knownIds, studying: studyingIds }));
+    api.put(`/progress/flashcards/${activeSession.id}`, { known: knownIds, studying: studyingIds })
+      .catch((err) => toast(`Couldn't save flashcard progress: ${err.message}`, { err: true }));
   }
 
   // -------------------------------------------------------------
   // 14. Lecture Notes with Timestamp Seeking
   // -------------------------------------------------------------
-  function renderNotes(session) {
+  // Notes for the open session, as last loaded from / saved to the server.
+  let sessionNotes = [];
+
+  async function loadNotes(session) {
+    sessionNotes = [];
+    if (notesList) notesList.innerHTML = '<div style="font-size:12.5px; color:var(--mist); padding:10px 0;">Loading notes…</div>';
+    try {
+      const notes = await api.get(`/lectures/${session.id}/notes`);
+      if (!activeSession || activeSession.id !== session.id) return; // switched sessions meanwhile
+      sessionNotes = notes;
+    } catch (err) {
+      toast(`Couldn't load notes: ${err.message}`, { err: true });
+    }
+    renderNotes();
+  }
+
+  function renderNotes() {
     if (!notesList) return;
     notesList.innerHTML = '';
 
-    const notesKey = `momento_notes_${session.id}`;
-    let notes = [];
-    try {
-      notes = JSON.parse(localStorage.getItem(notesKey)) || [];
-    } catch {}
+    const notes = sessionNotes;
 
     if (notes.length === 0) {
       notesList.innerHTML = '<div style="font-size:12.5px; color:var(--mist); padding:10px 0;">No notes added yet for this session. Add your first note above!</div>';
@@ -1705,10 +1783,15 @@ document.addEventListener('DOMContentLoaded', () => {
         playMedia();
       });
 
-      item.querySelector('.note-del').addEventListener('click', () => {
-        const filtered = notes.filter(n => n.id !== note.id);
-        localStorage.setItem(notesKey, JSON.stringify(filtered));
-        renderNotes(session);
+      item.querySelector('.note-del').addEventListener('click', async () => {
+        try {
+          await api.del(`/notes/${note.id}`);
+        } catch (err) {
+          toast(`Couldn't delete the note: ${err.message}`, { err: true });
+          return;
+        }
+        sessionNotes = sessionNotes.filter(n => n.id !== note.id);
+        renderNotes();
         toast('Note deleted.');
       });
 
@@ -1717,38 +1800,35 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (notesForm) {
-    notesForm.addEventListener('submit', (e) => {
+    notesForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!activeSession) return;
 
       const text = noteInput.value.trim();
       if (!text) return;
 
-      const notesKey = `momento_notes_${activeSession.id}`;
-      let notes = [];
+      const noteTime = currentTime; // capture before the request, playback keeps moving
+      const submitBtn = notesForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
       try {
-        notes = JSON.parse(localStorage.getItem(notesKey)) || [];
-      } catch {}
-
-      notes.push({
-        id: uid(),
-        time: currentTime,
-        text,
-        createdAt: new Date().toISOString()
-      });
-
-      localStorage.setItem(notesKey, JSON.stringify(notes));
-      noteInput.value = '';
-      renderNotes(activeSession);
-      toast(`Note added at [${fmtTime(currentTime)}]`);
+        const note = await api.post(`/lectures/${activeSession.id}/notes`, { text, time: noteTime });
+        sessionNotes.push(note);
+        noteInput.value = '';
+        renderNotes();
+        toast(`Note added at [${fmtTime(noteTime)}]`);
+      } catch (err) {
+        toast(`Couldn't save the note: ${err.message}`, { err: true });
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
     });
   }
 
   if (exportNotesBtn) {
     exportNotesBtn.addEventListener('click', () => {
       if (!activeSession) return;
-      const notesKey = `momento_notes_${activeSession.id}`;
-      const notes = JSON.parse(localStorage.getItem(notesKey)) || [];
+      const notes = sessionNotes;
 
       if (notes.length === 0) {
         toast('No notes to export.', { err: true });
@@ -1839,4 +1919,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // 16. Initialize Application
   // -------------------------------------------------------------
   loadLibrary();
+  loadStreak();
 });

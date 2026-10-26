@@ -1,0 +1,37 @@
+# Render Blueprint — deploys the backend API and the static frontend together.
+# Render dashboard -> New -> Blueprint -> pick this repository.
+# You will be asked for the values marked "sync: false" (they are secrets or
+# depend on your accounts, so they are never stored in Git).
+services:
+  # Express + MongoDB API (backend/)
+  - type: web
+    name: momento-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # MongoDB Atlas connection string
+      - key: JWT_SECRET
+        generateValue: true # Render generates a long random secret
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: FRONTEND_URL
+        sync: false # e.g. https://momento.onrender.com (the static site below)
+      - key: DEMO_LOGIN_ENABLED
+        value: "true"
+      - key: DEMO_EMAIL
+        value: student@momento.ai
+
+  # HTML/CSS/JS frontend (frontend/), served as-is with no build step
+  - type: web
+    name: momento
+    runtime: static
+    rootDir: frontend
+    buildCommand: echo "No build step - plain HTML, CSS and JavaScript"
+    staticPublishPath: .

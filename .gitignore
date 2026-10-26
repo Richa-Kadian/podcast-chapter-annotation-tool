@@ -1,1 +1,11 @@
 temp_orig/
+
+# Backend secrets and dependencies (also covered by backend/.gitignore)
+.env
+.env.*
+!.env.example
+node_modules/
+
+# Logs and OS files
+*.log
+.DS_Store

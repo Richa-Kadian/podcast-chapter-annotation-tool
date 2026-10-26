@@ -142,14 +142,14 @@
           <span>Where is my data stored?</span>
           <span class="faq-icon">＋</span>
         </button>
-        <div class="faq-a" id="faq-a-2" role="region" aria-labelledby="faq-q-2" aria-hidden="true"><p>Transcripts, chapters, notes, and quiz history are saved to this browser's LocalStorage. The uploaded audio/video file itself is kept in SessionStorage as an object URL, so it's available for playback until the tab closes.</p></div>
+        <div class="faq-a" id="faq-a-2" role="region" aria-labelledby="faq-q-2" aria-hidden="true"><p>Transcripts, chapters, notes, quiz history and study streaks are saved to your account in a MongoDB database through Momento's Express API, so they follow you to any browser. A local audio/video file is never uploaded: it stays on your device as a temporary object URL, available for playback until the tab closes. YouTube and direct video links are saved with the lecture.</p></div>
       </div>
       <div class="faq-item">
         <button type="button" class="faq-q" id="faq-q-3" aria-expanded="false" aria-controls="faq-a-3">
           <span>What's coming next?</span>
           <span class="faq-icon">＋</span>
         </button>
-        <div class="faq-a" id="faq-a-3" role="region" aria-labelledby="faq-q-3" aria-hidden="true"><p>The same four algorithms move server-side in a full rebuild — a real backend stores everything instead of LocalStorage, AI calls are proxied so no key ever reaches the browser, and multilingual captions, timestamp-pinned comments, and spaced-repetition retesting get added.</p></div>
+        <div class="faq-a" id="faq-a-3" role="region" aria-labelledby="faq-q-3" aria-hidden="true"><p>Accounts and study data already live on the backend. Next, the four algorithms move server-side, uploaded media gets proper cloud storage, AI calls are proxied so no key ever reaches the browser, and multilingual captions, timestamp-pinned comments, and spaced-repetition retesting get added.</p></div>
       </div>
     </div>
   </div>
@@ -175,7 +175,7 @@
         <h5>Built with</h5>
         <div class="foot-badges">
           <span class="foot-badge">Vanilla JavaScript</span>
-          <span class="foot-badge">LocalStorage</span>
+          <span class="foot-badge">Node.js + MongoDB</span>
           <span class="foot-badge">Fetch API</span>
           <span class="foot-badge">Hand-coded algorithms</span>
         </div>
@@ -190,6 +190,8 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/common.js"></script>
 <script src="js/how.js"></script>
 </body>

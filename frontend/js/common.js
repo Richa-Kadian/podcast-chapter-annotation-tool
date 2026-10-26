@@ -32,7 +32,7 @@
     return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
   }
 
-  // Storage Keys
+  // Legacy storage keys (pre-backend data, read only by the importer)
   const LIB_KEY = 'momento_library_v1';
   const STREAK_KEY = 'momento_streak_v1';
   const USERS_KEY = 'momento_users_v1';
@@ -130,7 +130,13 @@
   // -------------------------------------------------------------
   // User Authentication & Session Manager
   // -------------------------------------------------------------
+  // The backend decides who is signed in (via the token kept by
+  // js/api.js). The user object in sessionStorage is only a cached
+  // copy, so the header can show the name without waiting for a request.
+  const api = window.MomentoApi;
+
   function getCurrentUser() {
+    if (!api.getToken()) return null;
     try {
       return JSON.parse(sessionStorage.getItem(CURRENT_USER_KEY));
     } catch {
@@ -138,14 +144,23 @@
     }
   }
 
-  function setCurrentUser(user) {
+  function setCurrentUser(user, token) {
+    if (token) api.setToken(token);
     sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
     updateNavAuth();
   }
 
   function clearCurrentUser() {
+    api.clearToken();
     sessionStorage.removeItem(CURRENT_USER_KEY);
     updateNavAuth();
+  }
+
+  async function signOut() {
+    try {
+      await api.post('/auth/logout'); // invalidates the token on the server
+    } catch {}
+    clearCurrentUser();
   }
 
   function updateNavAuth() {
@@ -165,8 +180,9 @@
       `;
       const signOutBtn = $('#signOutBtn');
       if (signOutBtn) {
-        signOutBtn.addEventListener('click', () => {
-          clearCurrentUser();
+        signOutBtn.addEventListener('click', async () => {
+          signOutBtn.disabled = true;
+          await signOut();
           toast('Signed out successfully.');
           setTimeout(() => { window.location.href = 'login.html'; }, 400);
         });
@@ -189,32 +205,36 @@
   }
 
   // -------------------------------------------------------------
-  // Per-User Storage Key Scoping
+  // Legacy LocalStorage Keys
   // -------------------------------------------------------------
-  // Every piece of saved data (library, streak, notes, flashcard
-  // progress, etc.) must live under a key unique to the signed-in
-  // user, otherwise every account on the same browser shares the
-  // same LocalStorage bucket. scopedKey() appends the current
-  // user's id to a base key; a signed-out visitor falls back to a
-  // "guest" bucket so a fresh/new account never inherits someone
-  // else's saved sessions.
-  function scopedKey(baseKey) {
-    const user = getCurrentUser();
-    const scope = (user && user.id) ? user.id : 'guest';
-    return `${baseKey}__${scope}`;
+  // Before the backend existed, each browser-only account saved its
+  // library and streak under "<baseKey>__<localUserId>". Those keys
+  // are now only read once, by the import in login.js, and are never
+  // written again — MongoDB is the source of truth.
+  function legacyScopedKey(baseKey, localUserId) {
+    return `${baseKey}__${localUserId}`;
   }
 
   // -------------------------------------------------------------
   // Global Reset Button (Footer)
   // -------------------------------------------------------------
+  // The library and streak now live in MongoDB, so resetting deletes
+  // the signed-in user's lectures, notes, quiz attempts and progress.
   const resetAllBtn = $('#resetAllBtn');
   if (resetAllBtn) {
-    resetAllBtn.addEventListener('click', () => {
-      if (confirm('Clear and reset your saved library on this device?')) {
-        localStorage.removeItem(scopedKey(LIB_KEY));
-        localStorage.removeItem(scopedKey(STREAK_KEY));
+    resetAllBtn.addEventListener('click', async () => {
+      if (!getCurrentUser()) {
+        toast('Sign in first — your saved library is stored with your account.', { err: true });
+        return;
+      }
+      if (!confirm('Delete all saved lectures, notes and study progress from your account?')) return;
+      try {
+        await api.del('/lectures');
+        await api.del('/progress');
         toast('Your library has been reset. Reloading…');
         setTimeout(() => { window.location.reload(); }, 600);
+      } catch (err) {
+        toast(err.message, { err: true });
       }
     });
   }
@@ -238,12 +258,14 @@
     toast,
     attachRipple,
     initReveal,
+    api,
     getCurrentUser,
     setCurrentUser,
     clearCurrentUser,
+    signOut,
     updateNavAuth,
     requireAuth,
-    scopedKey,
+    legacyScopedKey,
     LIB_KEY,
     STREAK_KEY,
     USERS_KEY,
